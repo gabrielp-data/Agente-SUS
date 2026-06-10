@@ -1,0 +1,27 @@
+# Credenciais — NUNCA commitar
+.env
+.streamlit/secrets.toml
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# ChromaDB (banco vetorial local)
+data/chroma_db/
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor / ferramentas locais
+.claude/
+.vscode/
+.idea/

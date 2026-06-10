@@ -1,0 +1,227 @@
+{
+  "version": "2.0",
+  "description": "Dicionário real das tabelas SINAN/SUS — estrutura extraída do DDL PostgreSQL",
+  "schema": "SUS_SINAN",
+  "notes": [
+    "codigo_municipio: código IBGE de 6 dígitos (sem dígito verificador)",
+    "Para filtrar por UF, use LEFT(codigo_municipio, 2) = '<codigo_uf>'",
+    "Para filtrar por município, use codigo_municipio = '<codigo_ibge>'",
+    "ano e mes são campos CHAR — use ano = '2023' (com aspas) ou ano::int = 2023",
+    "tipo_municipio é um ENUM — valores típicos: verificar com SELECT DISTINCT tipo_municipio FROM tabela",
+    "Tabelas mensais têm casos_mes; tabelas anuais têm casos_ano"
+  ],
+  "codigos_uf": {
+    "11": "RO", "12": "AC", "13": "AM", "14": "RR", "15": "PA",
+    "16": "AP", "17": "TO", "21": "MA", "22": "PI", "23": "CE",
+    "24": "RN", "25": "PB", "26": "PE", "27": "AL", "28": "SE",
+    "29": "BA", "31": "MG", "32": "ES", "33": "RJ", "35": "SP",
+    "41": "PR", "42": "SC", "43": "RS", "50": "MS", "51": "MT",
+    "52": "GO", "53": "DF"
+  },
+  "codigos_municipios_principais": {
+    "530010": "Brasília (DF)",
+    "355030": "São Paulo (SP)",
+    "330455": "Rio de Janeiro (RJ)",
+    "310620": "Belo Horizonte (MG)",
+    "292740": "Salvador (BA)",
+    "230440": "Fortaleza (CE)",
+    "130260": "Manaus (AM)",
+    "410690": "Curitiba (PR)",
+    "261160": "Recife (PE)",
+    "431490": "Porto Alegre (RS)",
+    "150140": "Belém (PA)",
+    "520870": "Goiânia (GO)",
+    "420540": "Florianópolis (SC)",
+    "500270": "Campo Grande (MS)",
+    "270430": "Maceió (AL)",
+    "240810": "Natal (RN)",
+    "221100": "Teresina (PI)",
+    "250750": "João Pessoa (PB)",
+    "510340": "Cuiabá (MT)",
+    "160030": "Macapá (AP)",
+    "110020": "Porto Velho (RO)",
+    "140010": "Boa Vista (RR)",
+    "120040": "Rio Branco (AC)",
+    "172100": "Palmas (TO)",
+    "320530": "Vitória (ES)",
+    "280030": "Aracaju (SE)"
+  },
+  "tabelas": {
+    "sus_sinan_dengue_mensal": {
+      "descricao": "Casos mensais de dengue por município — base SINAN",
+      "doenca": "dengue",
+      "granularidade": "mensal",
+      "chave_primaria": ["ano", "mes", "codigo_municipio", "tipo_municipio"],
+      "colunas": [
+        {
+          "nome": "codigo_municipio",
+          "tipo": "bpchar(6)",
+          "nulo": false,
+          "descricao": "Código IBGE do município (6 dígitos, sem dígito verificador)",
+          "exemplo": "530010",
+          "papel": "municipio"
+        },
+        {
+          "nome": "ano",
+          "tipo": "bpchar(4)",
+          "nulo": false,
+          "descricao": "Ano de referência da notificação",
+          "exemplo": "'2023'",
+          "papel": "ano"
+        },
+        {
+          "nome": "mes",
+          "tipo": "bpchar(2)",
+          "nulo": false,
+          "descricao": "Mês de referência (01 a 12)",
+          "exemplo": "'03'",
+          "papel": "mes"
+        },
+        {
+          "nome": "tipo_municipio",
+          "tipo": "enum tipo_municipio_enum",
+          "nulo": false,
+          "descricao": "Classificação do município (verificar valores com SELECT DISTINCT)",
+          "papel": "classificacao"
+        },
+        {
+          "nome": "casos_mes",
+          "tipo": "int4",
+          "nulo": true,
+          "descricao": "Número de casos de dengue no mês",
+          "papel": "metrica_principal"
+        }
+      ]
+    },
+    "sus_sinan_dengue_anual": {
+      "descricao": "Casos anuais de dengue por município com detalhamento demográfico — base SINAN",
+      "doenca": "dengue",
+      "granularidade": "anual",
+      "chave_primaria": ["ano", "codigo_municipio", "tipo_municipio"],
+      "colunas": [
+        {
+          "nome": "codigo_municipio",
+          "tipo": "bpchar(6)",
+          "nulo": false,
+          "descricao": "Código IBGE do município (6 dígitos)",
+          "papel": "municipio"
+        },
+        {
+          "nome": "ano",
+          "tipo": "bpchar(4)",
+          "nulo": false,
+          "descricao": "Ano de referência",
+          "exemplo": "'2023'",
+          "papel": "ano"
+        },
+        {
+          "nome": "tipo_municipio",
+          "tipo": "enum tipo_municipio_enum",
+          "nulo": false,
+          "descricao": "Classificação do município",
+          "papel": "classificacao"
+        },
+        {
+          "nome": "casos_ano",
+          "tipo": "int4",
+          "nulo": true,
+          "descricao": "Total de casos de dengue no ano",
+          "papel": "metrica_principal"
+        },
+        {"nome": "zona_urbana",           "tipo": "int4", "nulo": true, "descricao": "Casos em zona urbana"},
+        {"nome": "zona_rural",            "tipo": "int4", "nulo": true, "descricao": "Casos em zona rural"},
+        {"nome": "zona_ignorado_branco",  "tipo": "int4", "nulo": true, "descricao": "Casos com zona ignorada/branco"},
+        {"nome": "zona_total",            "tipo": "int4", "nulo": true, "descricao": "Total por zona"},
+        {"nome": "faixa_etaria_1_ano",    "tipo": "int4", "nulo": true, "descricao": "Casos em menores de 1 ano"},
+        {"nome": "faixa_etaria_1_4",      "tipo": "int4", "nulo": true, "descricao": "Casos na faixa 1-4 anos"},
+        {"nome": "faixa_etaria_5_9",      "tipo": "int4", "nulo": true, "descricao": "Casos na faixa 5-9 anos"},
+        {"nome": "faixa_etaria_10_14",    "tipo": "int4", "nulo": true, "descricao": "Casos na faixa 10-14 anos"},
+        {"nome": "faixa_etaria_15_19",    "tipo": "int4", "nulo": true, "descricao": "Casos na faixa 15-19 anos"},
+        {"nome": "faixa_etaria_20_39",    "tipo": "int4", "nulo": true, "descricao": "Casos na faixa 20-39 anos"},
+        {"nome": "faixa_etaria_40_59",    "tipo": "int4", "nulo": true, "descricao": "Casos na faixa 40-59 anos"},
+        {"nome": "faixa_etaria_60_64",    "tipo": "int4", "nulo": true, "descricao": "Casos na faixa 60-64 anos"},
+        {"nome": "faixa_etaria_65_69",    "tipo": "int4", "nulo": true, "descricao": "Casos na faixa 65-69 anos"},
+        {"nome": "faixa_etaria_70_79",    "tipo": "int4", "nulo": true, "descricao": "Casos na faixa 70-79 anos"},
+        {"nome": "faixa_etaria_total",    "tipo": "int4", "nulo": true, "descricao": "Total por faixa etária"},
+        {"nome": "sexo_masculino",        "tipo": "int4", "nulo": true, "descricao": "Casos no sexo masculino"},
+        {"nome": "sexo_feminino",         "tipo": "int4", "nulo": true, "descricao": "Casos no sexo feminino"},
+        {"nome": "sexo_total",            "tipo": "int4", "nulo": true, "descricao": "Total por sexo"},
+        {"nome": "raca_branca",           "tipo": "int4", "nulo": true, "descricao": "Casos raça branca"},
+        {"nome": "raca_preta",            "tipo": "int4", "nulo": true, "descricao": "Casos raça preta"},
+        {"nome": "raca_parda",            "tipo": "int4", "nulo": true, "descricao": "Casos raça parda"},
+        {"nome": "raca_amarela",          "tipo": "int4", "nulo": true, "descricao": "Casos raça amarela"},
+        {"nome": "raca_indigena",         "tipo": "int4", "nulo": true, "descricao": "Casos raça indígena"},
+        {"nome": "raca_ignorado_branco",  "tipo": "int4", "nulo": true, "descricao": "Casos raça ignorada/branco"},
+        {"nome": "raca_total",            "tipo": "int4", "nulo": true, "descricao": "Total por raça"},
+        {"nome": "evolucao_cura",                         "tipo": "int4", "nulo": true, "descricao": "Casos com evolução: cura"},
+        {"nome": "evolucao_obito_pelo_agravo_notificado", "tipo": "int4", "nulo": true, "descricao": "Óbitos pelo agravo"},
+        {"nome": "evolucao_obito_por_outra_causa",        "tipo": "int4", "nulo": true, "descricao": "Óbitos por outra causa"},
+        {"nome": "evolucao_obito_em_investigacao",        "tipo": "int4", "nulo": true, "descricao": "Óbitos em investigação"},
+        {"nome": "evolucao_ignorado_branco",              "tipo": "int4", "nulo": true, "descricao": "Evolução ignorada/branco"},
+        {"nome": "evolucao_total",                        "tipo": "int4", "nulo": true, "descricao": "Total por evolução"}
+      ]
+    },
+    "sus_sinan_dengue_antigo_mensal": {
+      "descricao": "Série histórica mensal de dengue (anos anteriores) — estrutura idêntica à dengue_mensal",
+      "doenca": "dengue",
+      "granularidade": "mensal",
+      "chave_primaria": ["ano", "mes", "codigo_municipio", "tipo_municipio"],
+      "colunas": [
+        {"nome": "codigo_municipio", "tipo": "bpchar(6)", "nulo": false, "descricao": "Código IBGE do município", "papel": "municipio"},
+        {"nome": "ano",              "tipo": "bpchar(4)", "nulo": false, "descricao": "Ano de referência", "papel": "ano"},
+        {"nome": "mes",              "tipo": "bpchar(2)", "nulo": false, "descricao": "Mês de referência (01-12)", "papel": "mes"},
+        {"nome": "tipo_municipio",   "tipo": "enum tipo_municipio_enum", "nulo": false, "descricao": "Classificação do município", "papel": "classificacao"},
+        {"nome": "casos_mes",        "tipo": "int4", "nulo": true, "descricao": "Número de casos no mês", "papel": "metrica_principal"}
+      ]
+    },
+    "sus_sinan_dengue_antigo_anual": {
+      "descricao": "Série histórica anual de dengue (anos anteriores) — estrutura idêntica à dengue_anual",
+      "doenca": "dengue",
+      "granularidade": "anual",
+      "chave_primaria": ["ano", "codigo_municipio", "tipo_municipio"],
+      "colunas": [
+        {"nome": "codigo_municipio", "tipo": "bpchar(6)", "nulo": false, "descricao": "Código IBGE do município", "papel": "municipio"},
+        {"nome": "ano",              "tipo": "bpchar(4)", "nulo": false, "descricao": "Ano de referência", "papel": "ano"},
+        {"nome": "tipo_municipio",   "tipo": "enum tipo_municipio_enum", "nulo": false, "descricao": "Classificação do município", "papel": "classificacao"},
+        {"nome": "casos_ano",        "tipo": "int4", "nulo": true, "descricao": "Total de casos no ano", "papel": "metrica_principal"},
+        {"nome": "zona_urbana",      "tipo": "int4", "nulo": true, "descricao": "Casos zona urbana"},
+        {"nome": "zona_rural",       "tipo": "int4", "nulo": true, "descricao": "Casos zona rural"},
+        {"nome": "zona_total",       "tipo": "int4", "nulo": true, "descricao": "Total zona"},
+        {"nome": "faixa_etaria_total","tipo": "int4", "nulo": true, "descricao": "Total faixa etária"},
+        {"nome": "sexo_masculino",   "tipo": "int4", "nulo": true, "descricao": "Casos masculino"},
+        {"nome": "sexo_feminino",    "tipo": "int4", "nulo": true, "descricao": "Casos feminino"},
+        {"nome": "sexo_total",       "tipo": "int4", "nulo": true, "descricao": "Total sexo"},
+        {"nome": "raca_total",       "tipo": "int4", "nulo": true, "descricao": "Total raça"},
+        {"nome": "evolucao_cura",                        "tipo": "int4", "nulo": true, "descricao": "Evolução: cura"},
+        {"nome": "evolucao_obito_pelo_agravo_notificado","tipo": "int4", "nulo": true, "descricao": "Óbitos pelo agravo"},
+        {"nome": "evolucao_total",                       "tipo": "int4", "nulo": true, "descricao": "Total evolução"}
+      ]
+    },
+    "sus_sinan_botulismo_mensal": {
+      "descricao": "Casos mensais de botulismo por município — base SINAN",
+      "doenca": "botulismo",
+      "granularidade": "mensal",
+      "chave_primaria": ["ano", "mes", "codigo_municipio", "tipo_municipio"],
+      "colunas": [
+        {"nome": "codigo_municipio", "tipo": "bpchar(6)", "nulo": false, "descricao": "Código IBGE do município (6 dígitos)", "papel": "municipio"},
+        {"nome": "ano",              "tipo": "bpchar(4)", "nulo": false, "descricao": "Ano de referência", "papel": "ano"},
+        {"nome": "mes",              "tipo": "bpchar(2)", "nulo": false, "descricao": "Mês de referência (01-12)", "papel": "mes"},
+        {"nome": "tipo_municipio",   "tipo": "enum tipo_municipio_enum", "nulo": false, "descricao": "Classificação do município", "papel": "classificacao"},
+        {"nome": "casos_mes",        "tipo": "int4", "nulo": true, "descricao": "Número de casos de botulismo no mês", "papel": "metrica_principal"}
+      ]
+    },
+    "sus_sinan_chagas_mensal": {
+      "descricao": "Casos mensais de doença de Chagas por município — base SINAN",
+      "doenca": "chagas",
+      "granularidade": "mensal",
+      "chave_primaria": ["ano", "mes", "codigo_municipio", "tipo_municipio"],
+      "colunas": [
+        {"nome": "codigo_municipio", "tipo": "bpchar(6)", "nulo": false, "descricao": "Código IBGE do município", "papel": "municipio"},
+        {"nome": "ano",              "tipo": "bpchar(4)", "nulo": false, "descricao": "Ano de referência", "papel": "ano"},
+        {"nome": "mes",              "tipo": "bpchar(2)", "nulo": false, "descricao": "Mês de referência (01-12)", "papel": "mes"},
+        {"nome": "tipo_municipio",   "tipo": "enum tipo_municipio_enum", "nulo": false, "descricao": "Classificação do município", "papel": "classificacao"},
+        {"nome": "casos_mes",        "tipo": "int4", "nulo": true, "descricao": "Número de casos de Chagas no mês", "papel": "metrica_principal"}
+      ]
+    }
+  }
+}
