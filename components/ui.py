@@ -71,15 +71,17 @@ def register_plotly_theme() -> str:
     if theme == "dark":
         font_color = "#e8eaf0"
         grid = "rgba(255,255,255,.07)"
+        bg = "rgba(0,0,0,0)"          # transparente sobre o fundo escuro
     else:
         font_color = "#334155"
         grid = "rgba(0,0,0,.08)"
+        bg = "#ffffff"                # branco explícito no modo claro
 
     pio.templates["sinan"] = go.layout.Template(
         layout=dict(
             font=dict(family="Inter, sans-serif", color=font_color, size=13),
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor=bg,
+            plot_bgcolor=bg,
             colorway=BRAND_COLORS,
             xaxis=dict(gridcolor=grid, zerolinecolor=grid, linecolor=grid),
             yaxis=dict(gridcolor=grid, zerolinecolor=grid, linecolor=grid),

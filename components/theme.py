@@ -96,6 +96,39 @@ LIGHT_CSS = """
   .stCaption, .stCaption p { color: #64748b !important; }
   [data-testid="stSidebarNav"] a span { color: #1e293b !important; }
   code { background: #f1f5f9 !important; color: #0f172a !important; }
+  /* Campos de entrada (texto, número, select, multiselect, textarea) */
+  .stApp [data-baseweb="input"],
+  .stApp [data-baseweb="base-input"],
+  .stApp [data-baseweb="textarea"],
+  .stApp [data-baseweb="select"] > div,
+  .stApp [data-testid="stTextInput"] input,
+  .stApp [data-testid="stNumberInput"] input,
+  .stApp [data-testid="stDateInput"] input {
+    background-color: #ffffff !important;
+    color: #1e293b !important;
+    border-color: #cbd5e1 !important;
+  }
+  .stApp [data-baseweb="input"] input,
+  .stApp [data-baseweb="textarea"] textarea,
+  .stApp [data-baseweb="select"] div {
+    background-color: transparent !important;
+    color: #1e293b !important;
+  }
+  .stApp input::placeholder, .stApp textarea::placeholder { color: #94a3b8 !important; }
+  .stApp [data-baseweb="select"] svg { fill: #64748b !important; }
+  /* Lista suspensa de opções (renderiza fora de .stApp) */
+  [data-baseweb="popover"] [role="listbox"],
+  [data-baseweb="popover"] ul,
+  [data-baseweb="menu"],
+  [data-baseweb="menu"] li {
+    background-color: #ffffff !important;
+    color: #1e293b !important;
+  }
+  [data-baseweb="popover"] [role="option"] { color: #1e293b !important; }
+  /* Botão de download */
+  .stApp [data-testid="stDownloadButton"] button {
+    background: #3b82f6 !important; color: #fff !important; border: none !important;
+  }
   /* Marca no topo da barra lateral (acima do menu de navegação) */
   [data-testid="stSidebarNav"]::before {
     content: "SINAN Analytics";
