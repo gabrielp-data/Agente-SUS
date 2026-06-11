@@ -62,6 +62,12 @@ _CONVERSATIONAL_PATTERNS = [
     "do que conversamos", "sobre o que conversamos", "historico",
     "quem e voce", "o que voce faz", "o que voce pode fazer", "como voce funciona",
     "para que voce serve", "o que voce e", "voce lembra",
+    # capacidade / ajuda
+    "consegue responder", "consgue responder", "consegue me responder",
+    "consgue me responder", "pode me responder", "o que consegue",
+    "o que voce consegue", "o que da pra perguntar", "o que da para perguntar",
+    "que tipo de pergunta", "tipos de pergunta", "que perguntas posso",
+    "como usar", "como te uso", "me ajuda", "preciso de ajuda", "pode ajudar",
 ]
 
 
@@ -171,6 +177,9 @@ def query_rag(state: dict) -> dict:
 
 def generate_sql(state: dict) -> dict:
     """Generate a PostgreSQL SELECT statement."""
+    # Conta tentativas de geração para evitar loop infinito gerar↔validar
+    state["gen_attempts"] = state.get("gen_attempts", 0) + 1
+
     schema_text = schema_to_prompt(state.get("db_schema", {}))
     rag_context = state.get("rag_context", "")
     history = _format_history(state.get("chat_history", []))

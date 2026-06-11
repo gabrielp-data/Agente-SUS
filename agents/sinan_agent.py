@@ -43,6 +43,7 @@ class AgentState(TypedDict, total=False):
     # SQL
     sql: str
     sql_valid: bool
+    gen_attempts: int
     sql_error: str
     sql_explanation: str
     tables_used: list[str]
@@ -68,10 +69,10 @@ class AgentState(TypedDict, total=False):
 
 
 def _route_after_validate(state: AgentState) -> str:
-    retry = state.get("retry_count", 0)
     if state.get("sql_valid"):
         return "execute_sql"
-    if retry < 2:
+    # Limita as regenerações de SQL (evita loop infinito gerar↔validar)
+    if state.get("gen_attempts", 0) < 2:
         return "generate_sql"
     return "generate_answer"
 
@@ -181,7 +182,19 @@ class SinanAgent:
         }
 
         logger.info("Agent iniciado — pergunta: %s", question[:80])
-        result = self._graph.invoke(initial_state)
+        try:
+            result = self._graph.invoke(initial_state, config={"recursion_limit": 15})
+        except Exception as exc:
+            logger.error("Agent erro/loop: %s", exc)
+            return {
+                **initial_state,
+                "answer": (
+                    "Não consegui interpretar essa pergunta como uma consulta aos dados. "
+                    "Tente reformular — por exemplo: *\"casos de dengue em São Paulo em 2023\"* "
+                    "ou *\"óbitos por dengue por UF\"*."
+                ),
+                "sql": "",
+            }
         logger.info(
             "Agent concluído — tokens: %d/%d steps: %d",
             result.get("total_input_tokens", 0),
