@@ -112,7 +112,11 @@ ou interação social, e NÃO sobre os dados. Exemplos (incluindo com erros de d
 - "oi", "bom dia", "obrigado", "o que você faz?", "quem é você?"
 Nesses casos deixe "tables" como [] e "needs_chart" false.
 Para QUALQUER pergunta que envolva números, casos, anos, óbitos, municípios ou
-comparações entre dados, use os outros intents (NUNCA conversational)."""
+comparações entre dados, use os outros intents (NUNCA conversational).
+
+O usuário pode escrever com erros de digitação, sem acentos ou de forma informal
+(ex: "denge", "brasila", "obitos", "pergnta"). Interprete a intenção mais provável
+e classifique normalmente — não deixe que a grafia atrapalhe a classificação."""
 
     tables_hint = "\n".join(f"- {t}" for t in settings.sinan_tables)
     rag_hint = "\n".join(f"- {t}" for t in rag_tables) if rag_tables else "(nenhuma identificada)"
@@ -174,6 +178,17 @@ Schema disponível:
 {schema_text}
 
 {rag_context}
+
+=== INTERPRETAÇÃO DA PERGUNTA (tolerância a erros) ===
+O usuário pode escrever com erros de digitação, sem acentos, abreviações ou de
+forma informal. SEMPRE infira a intenção mais provável e prossiga — nunca recuse
+por causa de grafia. Exemplos de normalização:
+- Doenças: "denge"/"dengeu"/"dengi" → dengue | "botulismo"/"botolismo" → botulismo | "chagas"/"xagas" → doença de Chagas
+- Locais: "brasila"/"brasilia"/"bsb" → Brasília (530010) | "sao paulo"/"sp"/"são paulo" → SP (35) | "rio"/"rj" → RJ (33)
+- Termos: "obito"/"óbito"/"morte" → óbitos | "caso"/"casos"/"qtd" → contagem de casos | "ano"/"anos" → coluna ano
+- Anos escritos por extenso ou abreviados ("23" → "2023" se fizer sentido).
+Se a localidade/cidade não estiver na lista de códigos abaixo, use o filtro por UF
+(2 primeiros dígitos). Em caso de ambiguidade real, escolha a interpretação mais comum.
 
 === REGRAS CRÍTICAS DA BASE SINAN ===
 
