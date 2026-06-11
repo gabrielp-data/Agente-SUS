@@ -62,6 +62,12 @@ DARK_CSS = """
   [data-testid="stChatInput"] textarea { background: #1e2235 !important; }
   [data-testid="stChatInput"] textarea { color: #e8eaf0 !important; }
   [data-testid="stChatInput"] textarea::placeholder { color: #9ba4b5 !important; }
+  /* Tabela HTML temática (render_table) */
+  .sinan-table-wrap { border: 1px solid #2d3250; border-radius: 10px; }
+  .sinan-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .sinan-table th { background: #1e2235 !important; color: #f1f3f9 !important; text-align: left; padding: 9px 12px; font-weight: 700; border-bottom: 1px solid #2d3250; position: sticky; top: 0; }
+  .sinan-table td { padding: 8px 12px; color: #cbd5e1 !important; border-bottom: 1px solid #232842; white-space: nowrap; }
+  .sinan-table tr:hover td { background: #232842 !important; }
 </style>
 """
 
@@ -159,6 +165,12 @@ LIGHT_CSS = """
   [data-testid="stChatInput"] textarea { background: #ffffff !important; }
   [data-testid="stChatInput"] textarea { color: #1e293b !important; }
   [data-testid="stChatInput"] textarea::placeholder { color: #94a3b8 !important; }
+  /* Tabela HTML temática (render_table) */
+  .sinan-table-wrap { border: 1px solid #e2e8f0; border-radius: 10px; background: #ffffff; }
+  .sinan-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .sinan-table th { background: #f1f5f9 !important; color: #0f172a !important; text-align: left; padding: 9px 12px; font-weight: 700; border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; }
+  .sinan-table td { padding: 8px 12px; color: #334155 !important; border-bottom: 1px solid #eef2f7; white-space: nowrap; }
+  .sinan-table tr:hover td { background: #f8fafc !important; }
 </style>
 """
 

@@ -7,7 +7,7 @@ import streamlit as st
 
 from components.sidebar import render_sidebar
 from components.theme import apply_theme
-from components.ui import fmt_br, page_header, register_plotly_theme
+from components.ui import fmt_br, page_header, register_plotly_theme, render_table
 from services.monitoring_service import MonitoringService
 
 st.set_page_config(page_title="Monitoramento | SINAN Analytics", page_icon="◆", layout="wide")
@@ -73,19 +73,16 @@ else:
     st.markdown("##### Histórico de consultas")
     display_cols = ["timestamp", "question", "tables_used", "input_tokens", "output_tokens", "latency_ms", "error"]
     show_cols = [c for c in display_cols if c in df.columns]
-    st.dataframe(
-        df[show_cols].rename(columns={
-            "timestamp": "Data/Hora",
-            "question": "Pergunta",
-            "tables_used": "Tabelas",
-            "input_tokens": "Tokens Entrada",
-            "output_tokens": "Tokens Saída",
-            "latency_ms": "Latência (ms)",
-            "error": "Erro",
-        }),
-        use_container_width=True,
-        hide_index=True,
-    )
+    tbl = df[show_cols].rename(columns={
+        "timestamp": "Data/Hora",
+        "question": "Pergunta",
+        "tables_used": "Tabelas",
+        "input_tokens": "Tokens Entrada",
+        "output_tokens": "Tokens Saída",
+        "latency_ms": "Latência (ms)",
+        "error": "Erro",
+    })
+    render_table(tbl)
 
     # SQL details expander
     with st.expander("Ver SQLs executados"):

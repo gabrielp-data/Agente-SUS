@@ -53,6 +53,19 @@ def page_header(title: str, subtitle: str = "") -> None:
     )
 
 
+def render_table(df, max_height: int = 460) -> None:
+    """Renderiza um DataFrame como tabela HTML que segue o tema (dark/light).
+
+    Alternativa ao st.dataframe (que é canvas e não troca de tema ao vivo).
+    """
+    html = df.to_html(index=False, escape=True, border=0, classes="sinan-table")
+    st.markdown(
+        f'<div class="sinan-table-wrap" style="max-height:{max_height}px;overflow:auto;">'
+        f'{html}</div>',
+        unsafe_allow_html=True,
+    )
+
+
 def section(title: str) -> None:
     """Subtítulo de seção discreto e consistente."""
     st.markdown(
