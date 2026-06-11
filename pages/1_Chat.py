@@ -117,8 +117,8 @@ if question:
         result = None
         error_msg = ""
 
-        # Progressive status display
-        with st.status("Processando consulta...", expanded=True) as status:
+        # Progressive status display (começa fechado — mais limpo)
+        with st.status("Processando consulta...", expanded=False) as status:
             try:
                 result = st.session_state.agent.run(
                     question=question,
