@@ -1,6 +1,16 @@
 """Index the SINAN data dictionary into ChromaDB for RAG retrieval."""
 from __future__ import annotations
 
+# ChromaDB exige sqlite3 >= 3.35. No Streamlit Cloud o sqlite do sistema é antigo;
+# substituímos pelo pysqlite3 (pacote pysqlite3-binary) quando disponível.
+# Em Windows/local mantém o sqlite padrão (ImportError ignorado).
+try:  # pragma: no cover
+    __import__("pysqlite3")
+    import sys as _sys
+    _sys.modules["sqlite3"] = _sys.modules.pop("pysqlite3")
+except Exception:
+    pass
+
 import json
 import os
 from pathlib import Path
@@ -67,7 +77,11 @@ class RAGIndexer:
     # ── Private ───────────────────────────────────────────────────────────────
 
     def _index_dictionary(self) -> None:
-        """Load dicionario_sinan.json and insert one document per column."""
+        """Load dicionario_sinan.json and insert one document per column.
+
+        Suporta o JSON em português ("tabelas"/"colunas"/"nome"/"tipo"/"descricao")
+        com fallback para as chaves em inglês.
+        """
         if not os.path.exists(DICT_PATH):
             logger.warning("Dicionário não encontrado em %s — RAG vazio.", DICT_PATH)
             return
@@ -75,40 +89,43 @@ class RAGIndexer:
         with open(DICT_PATH, encoding="utf-8") as f:
             data = json.load(f)
 
+        tabelas = data.get("tabelas") or data.get("tables") or {}
         documents, metadatas, ids = [], [], []
 
-        for table_name, table_info in data["tables"].items():
-            table_desc = table_info.get("description", "")
-            disease = table_info.get("disease", "")
-            granularity = table_info.get("granularity", "")
+        for table_name, table_info in tabelas.items():
+            table_desc  = table_info.get("descricao")    or table_info.get("description", "")
+            disease     = table_info.get("doenca")       or table_info.get("disease", "")
+            granularity = table_info.get("granularidade") or table_info.get("granularity", "")
+            colunas     = table_info.get("colunas")      or table_info.get("columns") or []
 
-            # One document per column
-            for col in table_info.get("columns", []):
+            for col in colunas:
+                nome    = col.get("nome")      or col.get("name", "")
+                tipo    = col.get("tipo")      or col.get("type", "")
+                desc    = col.get("descricao") or col.get("description", "")
+                exemplo = col.get("exemplo")   or col.get("example", "")
+
                 doc_text = (
                     f"Tabela: {table_name} | "
                     f"Doença: {disease} | "
                     f"Granularidade: {granularity} | "
-                    f"Coluna: {col['name']} | "
-                    f"Tipo: {col['type']} | "
-                    f"Descrição: {col['description']}"
+                    f"Coluna: {nome} | "
+                    f"Tipo: {tipo} | "
+                    f"Descrição: {desc}"
                 )
-                if col.get("example"):
-                    doc_text += f" | Exemplo: {col['example']}"
+                if exemplo:
+                    doc_text += f" | Exemplo: {exemplo}"
 
-                doc_id = f"{table_name}__{col['name']}"
                 documents.append(doc_text)
-                metadatas.append(
-                    {
-                        "table": table_name,
-                        "column": col["name"],
-                        "type": col["type"],
-                        "disease": disease,
-                        "granularity": granularity,
-                    }
-                )
-                ids.append(doc_id)
+                metadatas.append({
+                    "table": table_name,
+                    "column": nome,
+                    "type": str(tipo),
+                    "disease": disease,
+                    "granularity": granularity,
+                })
+                ids.append(f"{table_name}__{nome}")
 
-            # Also index the table itself as a document
+            # Documento da tabela em si
             table_doc = (
                 f"Tabela: {table_name} | "
                 f"Doença: {disease} | "
@@ -117,11 +134,15 @@ class RAGIndexer:
             )
             documents.append(table_doc)
             metadatas.append(
-                {"table": table_name, "column": "_table_", "disease": disease, "granularity": granularity, "type": "table"}
+                {"table": table_name, "column": "_table_", "disease": disease,
+                 "granularity": granularity, "type": "table"}
             )
             ids.append(f"{table_name}__TABLE")
 
-        # Batch upsert
+        if not documents:
+            logger.warning("Dicionário sem colunas reconhecidas — RAG vazio.")
+            return
+
         batch_size = 50
         for i in range(0, len(documents), batch_size):
             self._collection.add(
@@ -130,4 +151,4 @@ class RAGIndexer:
                 ids=ids[i : i + batch_size],
             )
 
-        logger.info("RAG: %d documentos indexados em %d tabelas.", len(documents), len(data["tables"]))
+        logger.info("RAG: %d documentos indexados em %d tabelas.", len(documents), len(tabelas))
