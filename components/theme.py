@@ -51,8 +51,14 @@ DARK_CSS = """
   [data-testid="stToolbar"] { color: #e8eaf0 !important; }
   [data-testid="stBottom"] > div,
   [data-testid="stBottomBlockContainer"] { background: #0f1117 !important; }
-  [data-testid="stChatInput"] { background: #1e2235 !important; border: 1px solid #2d3250 !important; border-radius: 12px !important; }
+  [data-testid="stChatInput"] { border: 1px solid #2d3250 !important; border-radius: 12px !important; }
+  [data-testid="stChatInput"],
+  [data-testid="stChatInput"] > div,
+  [data-testid="stChatInput"] [data-baseweb="textarea"],
+  [data-testid="stChatInput"] [data-baseweb="base-input"],
+  [data-testid="stChatInput"] textarea { background: #1e2235 !important; }
   [data-testid="stChatInput"] textarea { color: #e8eaf0 !important; }
+  [data-testid="stChatInput"] textarea::placeholder { color: #9ba4b5 !important; }
 </style>
 """
 
@@ -106,7 +112,12 @@ LIGHT_CSS = """
   [data-testid="stToolbar"] { color: #1e293b !important; }
   [data-testid="stBottom"] > div,
   [data-testid="stBottomBlockContainer"] { background: #f8fafc !important; }
-  [data-testid="stChatInput"] { background: #ffffff !important; border: 1px solid #e2e8f0 !important; border-radius: 12px !important; box-shadow: 0 1px 4px rgba(0,0,0,.06) !important; }
+  [data-testid="stChatInput"] { border: 1px solid #e2e8f0 !important; border-radius: 12px !important; box-shadow: 0 1px 4px rgba(0,0,0,.06) !important; }
+  [data-testid="stChatInput"],
+  [data-testid="stChatInput"] > div,
+  [data-testid="stChatInput"] [data-baseweb="textarea"],
+  [data-testid="stChatInput"] [data-baseweb="base-input"],
+  [data-testid="stChatInput"] textarea { background: #ffffff !important; }
   [data-testid="stChatInput"] textarea { color: #1e293b !important; }
   [data-testid="stChatInput"] textarea::placeholder { color: #94a3b8 !important; }
 </style>
