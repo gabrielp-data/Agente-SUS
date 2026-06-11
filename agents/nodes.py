@@ -354,6 +354,29 @@ Erro retornado:
     return state
 
 
+# Código IBGE da UF (2 dígitos) → sigla, para rótulos legíveis nos gráficos
+_UF_SIGLA = {
+    "11": "RO", "12": "AC", "13": "AM", "14": "RR", "15": "PA", "16": "AP",
+    "17": "TO", "21": "MA", "22": "PI", "23": "CE", "24": "RN", "25": "PB",
+    "26": "PE", "27": "AL", "28": "SE", "29": "BA", "31": "MG", "32": "ES",
+    "33": "RJ", "35": "SP", "41": "PR", "42": "SC", "43": "RS", "50": "MS",
+    "51": "MT", "52": "GO", "53": "DF",
+}
+
+
+def _humanize_chart_df(df):
+    """Troca códigos de UF (ex: '35') pela sigla (ex: 'SP') em colunas de texto."""
+    out = df.copy()
+    for col in out.columns:
+        # apenas colunas não-numéricas (códigos vêm como texto do LEFT(...))
+        if out[col].dtype == object or str(out[col].dtype).startswith("string"):
+            vals = out[col].astype(str).str.strip()
+            non_empty = vals[vals != ""]
+            if len(non_empty) and non_empty.isin(_UF_SIGLA).mean() >= 0.6:
+                out[col] = vals.map(lambda v: _UF_SIGLA.get(v, v))
+    return out
+
+
 def generate_chart_node(state: dict) -> dict:
     """Determine and build the Plotly chart if appropriate."""
     df = state.get("results")
@@ -367,6 +390,8 @@ def generate_chart_node(state: dict) -> dict:
         import plotly.express as px
         import plotly.graph_objects as go
 
+        # Rótulos legíveis (código de UF → sigla)
+        df = _humanize_chart_df(df)
         fig = None
         cols = list(df.columns)
 
@@ -438,6 +463,7 @@ CONTEÚDO/ESCOPO da base — isso NÃO é uma consulta a dados (não gere SQL).
 Responda de forma breve, cordial e em português, usando o catálogo e o histórico
 abaixo. Nunca invente números; se ele quiser valores específicos, oriente a
 perguntar (ex: "quantos casos de dengue em São Paulo em 2023").
+Mantenha um tom sóbrio e profissional: NÃO use emojis.
 
 {catalogo}"""
 
@@ -512,7 +538,9 @@ def generate_answer_node(state: dict) -> dict:
     system = """Você é um analista especializado em dados de saúde pública brasileira (SINAN/SUS).
 Responda em português, de forma clara, objetiva e profissional.
 Use markdown: **negrito** para números relevantes, listas quando necessário.
-Destaque padrões, tendências ou anomalias nos dados."""
+Destaque padrões, tendências ou anomalias nos dados.
+Mantenha um tom sóbrio e técnico: NÃO use emojis (no máximo um, e só se for
+realmente útil). Evite títulos decorativos e ícones — priorize o conteúdo."""
 
     user_text = f"""Pergunta: {question}
 
