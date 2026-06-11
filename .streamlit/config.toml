@@ -1,0 +1,14 @@
+# Tema base FIXO (escuro).
+# As tabelas de dados (st.dataframe) são renderizadas em canvas pelo Streamlit e
+# seguem este tema base — não dá para trocá-las ao vivo via CSS. Fixamos em escuro
+# para combinar com o modo escuro (padrão do app). O botão Dark/Light continua
+# alternando o restante da interface (textos, cards, inputs, gráficos).
+[theme]
+base = "dark"
+primaryColor = "#4f8ef7"
+backgroundColor = "#0f1117"
+secondaryBackgroundColor = "#1e2235"
+textColor = "#e8eaf0"
+
+[browser]
+gatherUsageStats = false
