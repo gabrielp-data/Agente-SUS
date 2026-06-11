@@ -140,65 +140,28 @@ if question:
                 error_msg = str(exc)
 
         if result:
-            answer = result.get("answer", "Sem resposta.")
-            sql = result.get("sql", "")
-            df = result.get("results")
-            chart = result.get("chart")
-
-            st.markdown(answer)
-
-            if sql:
-                with st.expander("Ver SQL gerado", expanded=False):
-                    st.code(sql, language="sql")
-                    if result.get("sql_explanation"):
-                        st.caption(f"_{result['sql_explanation']}_")
-
-            if result.get("tables_used") or result.get("filters_applied"):
-                with st.expander("Detalhes da consulta", expanded=False):
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        if result.get("tables_used"):
-                            st.markdown("**Tabelas:**")
-                            for t in result["tables_used"]:
-                                st.markdown(f"- `{t}`")
-                        if result.get("columns_used"):
-                            st.markdown("**Colunas:**")
-                            for c in result["columns_used"]:
-                                st.markdown(f"- `{c}`")
-                    with c2:
-                        if result.get("filters_applied"):
-                            st.markdown("**Filtros:**")
-                            for f in result["filters_applied"]:
-                                st.markdown(f"- {f}")
-
-            if chart is not None:
-                st.plotly_chart(chart, use_container_width=True)
-
-            if df is not None and not df.empty:
-                with st.expander(f"Dados ({len(df)} linhas)", expanded=False):
-                    st.dataframe(df, use_container_width=True)
-
-            # Persist to history
+            # Salva no histórico — quem renderiza a resposta é o loop do histórico
+            # (acima), evitando a duplicação. Por isso não desenhamos aqui.
             latency_ms = int((time.monotonic() - start_time) * 1000)
             entry = {
                 "question": question,
-                "answer": answer,
-                "sql": sql,
+                "answer": result.get("answer", "Sem resposta."),
+                "sql": result.get("sql", ""),
                 "sql_explanation": result.get("sql_explanation", ""),
                 "tables_used": result.get("tables_used", []),
                 "columns_used": result.get("columns_used", []),
                 "filters_applied": result.get("filters_applied", []),
-                "results": df,
-                "chart": chart,
+                "results": result.get("results"),
+                "chart": result.get("chart"),
             }
             st.session_state.chat_history.append(entry)
 
             # Log to monitoring
             monitoring.log_query(QueryLog(
                 question=question,
-                sql=sql,
-                answer=answer[:500],
-                tables_used=", ".join(result.get("tables_used", [])),
+                sql=entry["sql"],
+                answer=entry["answer"][:500],
+                tables_used=", ".join(entry["tables_used"]),
                 input_tokens=result.get("total_input_tokens", 0),
                 output_tokens=result.get("total_output_tokens", 0),
                 latency_ms=latency_ms,
@@ -216,3 +179,7 @@ if question:
                 question=question, error=error_msg,
                 latency_ms=int((time.monotonic() - start_time) * 1000),
             ))
+
+    # Recarrega para o histórico renderizar a resposta uma única vez (sem flicker)
+    if result or error_msg:
+        st.rerun()
