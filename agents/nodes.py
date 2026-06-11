@@ -68,6 +68,12 @@ _CONVERSATIONAL_PATTERNS = [
     "o que voce consegue", "o que da pra perguntar", "o que da para perguntar",
     "que tipo de pergunta", "tipos de pergunta", "que perguntas posso",
     "como usar", "como te uso", "me ajuda", "preciso de ajuda", "pode ajudar",
+    # escopo / conteúdo da base (respondido pelo catálogo, sem SQL)
+    "quais doenca", "que doencas", "quais agravo", "que agravo",
+    "quais tabela", "que tabelas", "quais sao as tabela", "o que tem na base",
+    "o que tem nessa base", "o que a base tem", "que dados tem", "quais dados",
+    "doencas da base", "sobre a base", "estrutura da base", "como e a base",
+    "quais colunas", "que colunas", "o que posso consultar", "o que da pra consultar",
 ]
 
 
@@ -410,20 +416,35 @@ def conversational_answer_node(state: dict) -> dict:
     else:
         transcript = "(ainda não há perguntas anteriores nesta conversa)"
 
-    system = """Você é o assistente do SINAN Analytics, especializado em dados de
+    catalogo = """CATÁLOGO DA BASE (use para responder sobre o que a base contém):
+- Agravos (doenças) disponíveis:
+  • Dengue — tabelas anual e mensal, incluindo série histórica ("antigo")
+  • Botulismo — mensal
+  • Doença de Chagas — mensal
+- Tabelas: sus_sinan_dengue_anual, sus_sinan_dengue_mensal,
+  sus_sinan_dengue_antigo_anual, sus_sinan_dengue_antigo_mensal,
+  sus_sinan_botulismo_mensal, sus_sinan_chagas_mensal
+- Granularidade: dados por município (código IBGE de 6 dígitos), com contagem de
+  casos por ano/mês. As tabelas ANUAIS de dengue trazem recortes por sexo,
+  faixa etária, raça/cor e evolução (incluindo óbitos)."""
+
+    system = f"""Você é o assistente do SINAN Analytics, especializado em dados de
 saúde pública do Brasil (dengue, botulismo, doença de Chagas).
-O usuário fez uma pergunta sobre a PRÓPRIA CONVERSA ou uma saudação — isso NÃO é
-uma consulta a dados. Responda de forma breve, cordial e em português, usando o
-histórico abaixo quando for relevante. Nunca invente dados nem gere SQL.
-Se ele perguntar o que você faz, explique que pode responder perguntas sobre os
-dados do SINAN gerando SQL automaticamente."""
+O usuário fez uma pergunta sobre a PRÓPRIA CONVERSA, uma saudação, ou sobre o
+CONTEÚDO/ESCOPO da base — isso NÃO é uma consulta a dados (não gere SQL).
+Responda de forma breve, cordial e em português, usando o catálogo e o histórico
+abaixo. Nunca invente números; se ele quiser valores específicos, oriente a
+perguntar (ex: "quantos casos de dengue em São Paulo em 2023").
+
+{catalogo}"""
 
     user_text = f"""Histórico da conversa até agora:
 {transcript}
 
 Pergunta atual do usuário: {question}
 
-Responda diretamente, com base no histórico."""
+Responda diretamente, usando o catálogo da base quando a pergunta for sobre o que
+ela contém (doenças, tabelas, período, colunas)."""
 
     try:
         answer, usage = _bedrock.invoke(
