@@ -1,6 +1,8 @@
 """Shared UI helpers — formatação BR, tema Plotly e cabeçalhos profissionais."""
 from __future__ import annotations
 
+import html as _html
+
 import plotly.graph_objects as go
 import plotly.io as pio
 import streamlit as st

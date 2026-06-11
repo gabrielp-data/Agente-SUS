@@ -16,6 +16,7 @@ from agents.nodes import (
     query_rag,
     validate_sql_node,
 )
+from services.bedrock_service import CredentialsExpiredError
 from utils.logger import get_logger
 
 logger = get_logger("sinan_agent")
@@ -184,6 +185,9 @@ class SinanAgent:
         logger.info("Agent iniciado — pergunta: %s", question[:80])
         try:
             result = self._graph.invoke(initial_state, config={"recursion_limit": 15})
+        except CredentialsExpiredError:
+            # Propaga — a página de Chat exibe a orientação de renovar a chave.
+            raise
         except Exception as exc:
             logger.error("Agent erro/loop: %s", exc)
             return {

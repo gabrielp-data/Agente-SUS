@@ -10,7 +10,7 @@ from config.settings import get_settings
 from database.connection import execute_query
 from database.schema_loader import schema_to_prompt
 from rag.retriever import RAGRetriever
-from services.bedrock_service import BedrockService
+from services.bedrock_service import BedrockService, CredentialsExpiredError
 from utils.logger import get_logger
 from utils.sql_validator import sanitize_sql, validate_sql
 
@@ -260,6 +260,9 @@ Retorne SOMENTE um JSON válido no formato:
         raw, usage = _bedrock.invoke(messages, system, max_tokens=1024)
         parsed = _extract_json(raw)
         sql = parsed.get("sql", "")
+    except CredentialsExpiredError:
+        # Propaga — a página de Chat trata e orienta a renovar a chave.
+        raise
     except Exception as exc:
         logger.error("generate_sql falhou: %s", exc)
         state["sql_error"] = str(exc)
