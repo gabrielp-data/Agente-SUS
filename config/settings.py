@@ -44,6 +44,10 @@ class Settings:
     bedrock_model_id: str = os.getenv(
         "BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-6"
     )
+    # Modelo rápido/barato para etapas leves (classificação de intenção, conversa)
+    bedrock_fast_model_id: str = os.getenv(
+        "BEDROCK_FAST_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+    )
 
     # ── AWS credentials (fallback quando API key não está configurada) ───────
     aws_access_key_id: Optional[str] = os.getenv("AWS_ACCESS_KEY_ID")
@@ -109,7 +113,7 @@ class Settings:
         """Re-read .env so credential updates take effect without restart."""
         load_dotenv(str(_ENV_PATH), override=True)
         for field in [
-            "BEDROCK_API_KEY", "BEDROCK_ENDPOINT", "BEDROCK_MODEL_ID",
+            "BEDROCK_API_KEY", "BEDROCK_ENDPOINT", "BEDROCK_MODEL_ID", "BEDROCK_FAST_MODEL_ID",
             "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN",
             "DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD",
         ]:

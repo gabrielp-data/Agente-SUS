@@ -83,10 +83,30 @@ def _route_after_intent(state: AgentState) -> str:
     return "query_rag"
 
 
+# Erros que NÃO se resolvem reescrevendo o SQL — não adianta retentar
+_NON_RETRYABLE = (
+    "permission denied",
+    "could not connect",
+    "connection refused",
+    "could not translate host",
+    "password authentication failed",
+    "authentication failed",
+    "ssl ",
+    "timeout expired",
+    "server closed the connection",
+)
+
+
+def _is_retryable_error(error: str) -> bool:
+    e = (error or "").lower()
+    return not any(token in e for token in _NON_RETRYABLE)
+
+
 def _route_after_execute(state: AgentState) -> str:
-    if state.get("execution_error"):
-        if state.get("retry_count", 0) < 2:
-            return "fix_sql"
+    error = state.get("execution_error")
+    if error and _is_retryable_error(error) and state.get("retry_count", 0) < 2:
+        return "fix_sql"
+    # Erro não-corrigível (ex: permissão) ou sem erro → segue sem retentar
     return "generate_chart"
 
 

@@ -133,7 +133,10 @@ Tabelas sugeridas pelo RAG:
     messages = history_msgs + [{"role": "user", "content": [{"text": user_text}]}]
 
     try:
-        raw, usage = _bedrock.invoke(messages, system, max_tokens=512)
+        raw, usage = _bedrock.invoke(
+            messages, system, max_tokens=512,
+            model_id=settings.bedrock_fast_model_id,
+        )
         parsed = _extract_json(raw)
     except Exception as exc:
         logger.warning("analyze_intent falhou: %s", exc)
@@ -417,6 +420,7 @@ Responda diretamente, com base no histórico."""
         answer, usage = _bedrock.invoke(
             [{"role": "user", "content": [{"text": user_text}]}],
             system, max_tokens=512,
+            model_id=settings.bedrock_fast_model_id,
         )
         state["total_input_tokens"] = state.get("total_input_tokens", 0) + usage.get("input_tokens", 0)
         state["total_output_tokens"] = state.get("total_output_tokens", 0) + usage.get("output_tokens", 0)
@@ -442,10 +446,26 @@ def generate_answer_node(state: dict) -> dict:
     error = state.get("execution_error", "")
 
     if error and df is None:
-        state["answer"] = (
-            f"❌ Não foi possível executar a consulta após {state.get('retry_count', 0) + 1} tentativa(s).\n\n"
-            f"**Erro:** {error}"
-        )
+        err_low = error.lower()
+        if "permission denied" in err_low:
+            state["answer"] = (
+                "🔒 **Sem permissão de acesso ao banco.**\n\n"
+                "O SQL foi gerado corretamente, mas o usuário do banco ainda não tem "
+                "permissão de leitura no schema `SUS_SINAN`. É preciso o administrador "
+                "executar os comandos `GRANT` no PostgreSQL. (Veja o SQL gerado abaixo.)"
+            )
+        elif any(t in err_low for t in ("could not connect", "connection", "host", "timeout")):
+            state["answer"] = (
+                "🔌 **Não foi possível conectar ao banco de dados.**\n\n"
+                "Verifique o host/porta/credenciais em Configurações e se o servidor "
+                "está acessível."
+            )
+        else:
+            state["answer"] = (
+                f"❌ Não foi possível executar a consulta após "
+                f"{state.get('retry_count', 0) + 1} tentativa(s).\n\n"
+                f"**Erro:** {error}"
+            )
         return state
 
     if df is None or df.empty:
