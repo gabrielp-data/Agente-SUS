@@ -202,7 +202,7 @@ elif db_ok and not db_perm:
         icon="🔐",
     )
 else:
-    st.success("Tudo pronto. Abra o **Chat Analítico** na barra lateral para começar.", icon="✓")
+    st.success("Tudo pronto. Abra o **Chat Analítico** na barra lateral para começar.", icon="✅")
 
 st.divider()
-st.caption("AWS Bedrock · LangGraph · ChromaDB · PostgreSQL")
+st.caption("AWS Bedrock · LangGraph · PostgreSQL")
