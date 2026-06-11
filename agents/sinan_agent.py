@@ -7,6 +7,7 @@ from langgraph.graph import END, StateGraph
 
 from agents.nodes import (
     analyze_intent,
+    build_final_answer_inputs,
     conversational_answer_node,
     execute_sql_node,
     fix_sql_node,
@@ -16,7 +17,7 @@ from agents.nodes import (
     query_rag,
     validate_sql_node,
 )
-from services.bedrock_service import CredentialsExpiredError
+from services.bedrock_service import BedrockService, CredentialsExpiredError
 from utils.logger import get_logger
 
 logger = get_logger("sinan_agent")
@@ -59,6 +60,7 @@ class AgentState(TypedDict, total=False):
     # Output
     chart: Any
     answer: str
+    skip_answer: bool
 
     # Telemetry
     steps: list[str]
@@ -112,6 +114,12 @@ def _route_after_execute(state: AgentState) -> str:
     return "generate_chart"
 
 
+def _route_after_chart(state: AgentState) -> str:
+    if state.get("skip_answer"):
+        return "__end__"
+    return "generate_answer"
+
+
 # ── Graph ─────────────────────────────────────────────────────────────────────
 
 
@@ -143,7 +151,11 @@ def build_graph() -> StateGraph:
                              {"fix_sql": "fix_sql",
                               "generate_chart": "generate_chart"})
     g.add_edge("fix_sql",          "execute_sql")
-    g.add_edge("generate_chart",   "generate_answer")
+    # skip_answer=True (Chat com streaming) encerra antes da resposta final;
+    # o texto é gerado depois, via stream_answer().
+    g.add_conditional_edges("generate_chart", _route_after_chart,
+                             {"generate_answer": "generate_answer",
+                              "__end__": END})
     g.add_edge("generate_answer",  END)
 
     return g
@@ -160,6 +172,7 @@ class SinanAgent:
         question: str,
         chat_history: list[dict] | None = None,
         db_schema: dict | None = None,
+        skip_answer: bool = False,
     ) -> AgentState:
         """
         Execute the agent for a user question.
@@ -168,6 +181,8 @@ class SinanAgent:
             question:     Natural language question in Portuguese
             chat_history: Previous turns [{question, answer}]
             db_schema:    Loaded DB schema dict (passed in to avoid repeated DB calls)
+            skip_answer:  True → pipeline para antes da resposta final
+                          (o Chat usa stream_answer() para gerar com streaming)
 
         Returns:
             Final AgentState with answer, sql, chart, steps, etc.
@@ -180,6 +195,7 @@ class SinanAgent:
             "retry_count": 0,
             "total_input_tokens": 0,
             "total_output_tokens": 0,
+            "skip_answer": skip_answer,
         }
 
         logger.info("Agent iniciado — pergunta: %s", question[:80])
@@ -206,3 +222,28 @@ class SinanAgent:
             len(result.get("steps", [])),
         )
         return result
+
+    def stream_answer(self, state: AgentState):
+        """Gera a resposta final em streaming (usar após run(skip_answer=True)).
+
+        Yields pedaços de texto; ao final grava state["answer"] e os tokens.
+        """
+        direct, system, messages = build_final_answer_inputs(state)
+        if direct is not None:
+            state["answer"] = direct
+            yield direct
+            return
+
+        usage: dict = {}
+        parts: list[str] = []
+        bedrock = BedrockService()
+        for chunk in bedrock.invoke_stream(
+            messages, system, max_tokens=2048, usage_out=usage
+        ):
+            parts.append(chunk)
+            yield chunk
+
+        state["answer"] = "".join(parts)
+        state["total_input_tokens"] = state.get("total_input_tokens", 0) + usage.get("input_tokens", 0)
+        state["total_output_tokens"] = state.get("total_output_tokens", 0) + usage.get("output_tokens", 0)
+        state.setdefault("steps", []).append("✅ Resposta gerada (streaming)")

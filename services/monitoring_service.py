@@ -2,10 +2,9 @@
 from __future__ import annotations
 
 import sqlite3
-import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Generator
 
 import pandas as pd
@@ -14,9 +13,11 @@ from utils.logger import get_logger
 
 logger = get_logger("monitoring")
 
+# NOTA: SQLite local é efêmero em hosts como o Streamlit Cloud — os logs
+# zeram a cada redeploy. Para persistência real, migrar para o PostgreSQL.
 DB_PATH = "logs/monitoring.db"
 
-# Token pricing (USD per 1K tokens) — approximate Claude 3.5 Sonnet
+# Preço por 1K tokens (USD) — Claude Sonnet 4.x: $3/M entrada, $15/M saída
 PRICE_INPUT_PER_1K = 0.003
 PRICE_OUTPUT_PER_1K = 0.015
 
@@ -31,7 +32,7 @@ class QueryLog:
     output_tokens: int = 0
     latency_ms: int = 0
     error: str = ""
-    timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
 class MonitoringService:
@@ -102,7 +103,8 @@ class MonitoringService:
     def get_history(self, limit: int = 100) -> pd.DataFrame:
         with self._conn() as conn:
             return pd.read_sql_query(
-                f"SELECT * FROM query_log ORDER BY id DESC LIMIT {limit}", conn
+                "SELECT * FROM query_log ORDER BY id DESC LIMIT ?",
+                conn, params=(int(limit),),
             )
 
     def get_stats(self) -> dict:

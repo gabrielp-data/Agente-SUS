@@ -1,8 +1,6 @@
 """Shared UI helpers — formatação BR, tema Plotly e cabeçalhos profissionais."""
 from __future__ import annotations
 
-import html as _html
-
 import plotly.graph_objects as go
 import plotly.io as pio
 import streamlit as st
@@ -55,12 +53,14 @@ def page_header(title: str, subtitle: str = "") -> None:
     )
 
 
-def render_table(df, max_height: int = 460) -> None:
+def render_table(df, max_height: int = 460, index: bool = False) -> None:
     """Renderiza um DataFrame como tabela HTML que segue o tema (dark/light).
 
     Alternativa ao st.dataframe (que é canvas e não troca de tema ao vivo).
+    Indicada para tabelas pequenas/médias; para milhares de linhas prefira
+    st.dataframe (virtualizado).
     """
-    html = df.to_html(index=False, escape=True, border=0, classes="sinan-table")
+    html = df.to_html(index=index, escape=True, border=0, classes="sinan-table")
     st.markdown(
         f'<div class="sinan-table-wrap" style="max-height:{max_height}px;overflow:auto;">'
         f'{html}</div>',
@@ -72,7 +72,7 @@ def section(title: str) -> None:
     """Subtítulo de seção discreto e consistente."""
     st.markdown(
         f'<div style="font-size:.78rem;text-transform:uppercase;letter-spacing:1px;'
-        f'font-weight:700;opacity:.55;margin:.5rem 0 .25rem;">{title}</div>',
+        f'font-weight:700;opacity:.75;margin:.5rem 0 .25rem;">{title}</div>',
         unsafe_allow_html=True,
     )
 

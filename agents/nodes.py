@@ -11,6 +11,7 @@ from database.connection import execute_query
 from database.schema_loader import schema_to_prompt
 from rag.retriever import RAGRetriever
 from services.bedrock_service import BedrockService, CredentialsExpiredError
+from utils.geo import UF_SIGLA
 from utils.logger import get_logger
 from utils.sql_validator import sanitize_sql, validate_sql
 
@@ -354,16 +355,6 @@ Erro retornado:
     return state
 
 
-# Código IBGE da UF (2 dígitos) → sigla, para rótulos legíveis nos gráficos
-_UF_SIGLA = {
-    "11": "RO", "12": "AC", "13": "AM", "14": "RR", "15": "PA", "16": "AP",
-    "17": "TO", "21": "MA", "22": "PI", "23": "CE", "24": "RN", "25": "PB",
-    "26": "PE", "27": "AL", "28": "SE", "29": "BA", "31": "MG", "32": "ES",
-    "33": "RJ", "35": "SP", "41": "PR", "42": "SC", "43": "RS", "50": "MS",
-    "51": "MT", "52": "GO", "53": "DF",
-}
-
-
 def _humanize_chart_df(df):
     """Troca códigos de UF (ex: '35') pela sigla (ex: 'SP') em colunas de texto."""
     out = df.copy()
@@ -372,8 +363,8 @@ def _humanize_chart_df(df):
         if out[col].dtype == object or str(out[col].dtype).startswith("string"):
             vals = out[col].astype(str).str.strip()
             non_empty = vals[vals != ""]
-            if len(non_empty) and non_empty.isin(_UF_SIGLA).mean() >= 0.6:
-                out[col] = vals.map(lambda v: _UF_SIGLA.get(v, v))
+            if len(non_empty) and non_empty.isin(UF_SIGLA).mean() >= 0.6:
+                out[col] = vals.map(lambda v: UF_SIGLA.get(v, v))
     return out
 
 
@@ -399,20 +390,19 @@ def generate_chart_node(state: dict) -> dict:
         num_cols = df.select_dtypes(include="number").columns.tolist()
         cat_cols = df.select_dtypes(exclude="number").columns.tolist()
 
+        # Sem template explícito — usa o tema "sinan" registrado pela página
+        # (segue dark/light automaticamente).
         if chart_type == "line" and len(num_cols) >= 1 and len(cat_cols) >= 1:
-            fig = px.line(df, x=cat_cols[0], y=num_cols[0], title="Evolução temporal",
-                          template="plotly_dark")
+            fig = px.line(df, x=cat_cols[0], y=num_cols[0], title="Evolução temporal")
         elif chart_type == "pie" and len(num_cols) >= 1 and len(cat_cols) >= 1:
-            fig = px.pie(df, names=cat_cols[0], values=num_cols[0], title="Distribuição",
-                         template="plotly_dark")
+            fig = px.pie(df, names=cat_cols[0], values=num_cols[0], title="Distribuição")
         elif chart_type == "heatmap" and len(num_cols) >= 1:
-            fig = px.imshow(df[num_cols], title="Heatmap", template="plotly_dark")
+            fig = px.imshow(df[num_cols], title="Heatmap")
         elif len(num_cols) >= 1 and len(cat_cols) >= 1:
             fig = px.bar(df, x=cat_cols[0], y=num_cols[0], title="Resultado",
-                         template="plotly_dark", color=cat_cols[0] if len(cat_cols) > 0 else None)
+                         color=cat_cols[0] if len(cat_cols) > 0 else None)
         elif len(num_cols) >= 2:
-            fig = px.scatter(df, x=num_cols[0], y=num_cols[1], title="Dispersão",
-                             template="plotly_dark")
+            fig = px.scatter(df, x=num_cols[0], y=num_cols[1], title="Dispersão")
 
         if fig:
             fig.update_layout(
@@ -497,8 +487,15 @@ ela contém (doenças, tabelas, período, colunas)."""
     return state
 
 
-def generate_answer_node(state: dict) -> dict:
-    """Generate a natural language answer based on the query results."""
+def build_final_answer_inputs(state: dict) -> tuple[str | None, str | None, list | None]:
+    """Monta os insumos da resposta final.
+
+    Retorna (resposta_direta, system, messages):
+    - resposta_direta preenchida → não precisa de LLM (erro/sem dados);
+    - senão, (None, system, messages) prontos para invoke/invoke_stream.
+
+    Compartilhado entre generate_answer_node (síncrono) e o streaming do Chat.
+    """
     question = state["question"]
     sql = state.get("sql", "")
     df = state.get("results")
@@ -507,29 +504,29 @@ def generate_answer_node(state: dict) -> dict:
     if error and df is None:
         err_low = error.lower()
         if "permission denied" in err_low:
-            state["answer"] = (
+            direct = (
                 "🔒 **Sem permissão de acesso ao banco.**\n\n"
                 "O SQL foi gerado corretamente, mas o usuário do banco ainda não tem "
                 "permissão de leitura no schema `SUS_SINAN`. É preciso o administrador "
                 "executar os comandos `GRANT` no PostgreSQL. (Veja o SQL gerado abaixo.)"
             )
         elif any(t in err_low for t in ("could not connect", "connection", "host", "timeout")):
-            state["answer"] = (
+            direct = (
                 "🔌 **Não foi possível conectar ao banco de dados.**\n\n"
                 "Verifique o host/porta/credenciais em Configurações e se o servidor "
                 "está acessível."
             )
         else:
-            state["answer"] = (
+            direct = (
                 f"❌ Não foi possível executar a consulta após "
                 f"{state.get('retry_count', 0) + 1} tentativa(s).\n\n"
                 f"**Erro:** {error}"
             )
-        return state
+        return direct, None, None
 
     if df is None or df.empty:
-        state["answer"] = "Nenhum dado foi encontrado para essa consulta. Tente reformular a pergunta."
-        return state
+        return ("Nenhum dado foi encontrado para essa consulta. "
+                "Tente reformular a pergunta."), None, None
 
     n_rows = len(df)
     preview = df.head(15).to_string() if n_rows > 15 else df.to_string()
@@ -556,14 +553,27 @@ Responda à pergunta com base nos dados acima. Destaque os principais números e
 
     history = _format_history(state.get("chat_history", []))
     messages = history + [{"role": "user", "content": [{"text": user_text}]}]
+    return None, system, messages
+
+
+def generate_answer_node(state: dict) -> dict:
+    """Generate a natural language answer based on the query results."""
+    direct, system, messages = build_final_answer_inputs(state)
+    if direct is not None:
+        state["answer"] = direct
+        return state
 
     try:
         answer, usage = _bedrock.invoke(messages, system, max_tokens=2048)
         state["total_input_tokens"] = state.get("total_input_tokens", 0) + usage.get("input_tokens", 0)
         state["total_output_tokens"] = state.get("total_output_tokens", 0) + usage.get("output_tokens", 0)
+    except CredentialsExpiredError:
+        raise
     except Exception as exc:
         logger.error("generate_answer falhou: %s", exc)
-        answer = f"Consulta executada com sucesso ({n_rows} linhas retornadas), mas não foi possível gerar a interpretação: {exc}"
+        n_rows = len(state.get("results", []) or [])
+        answer = (f"Consulta executada com sucesso ({n_rows} linhas retornadas), "
+                  f"mas não foi possível gerar a interpretação: {exc}")
 
     state["answer"] = answer
     state["steps"].append("✅ Resposta gerada")

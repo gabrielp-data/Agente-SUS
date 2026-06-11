@@ -109,6 +109,9 @@ class Settings:
             f"@{self.db_host}:{self.db_port}/{self.db_name}"
         )
 
+    # Campos que exigem conversão de tipo no reload (env vars são sempre str)
+    _INT_FIELDS = {"DB_PORT", "MAX_SQL_ROWS", "SQL_TIMEOUT"}
+
     def reload(self) -> None:
         """Re-read .env so credential updates take effect without restart."""
         load_dotenv(str(_ENV_PATH), override=True)
@@ -116,10 +119,16 @@ class Settings:
             "BEDROCK_API_KEY", "BEDROCK_ENDPOINT", "BEDROCK_MODEL_ID", "BEDROCK_FAST_MODEL_ID",
             "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN",
             "DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD",
+            "MAX_SQL_ROWS", "SQL_TIMEOUT",
         ]:
             val = os.getenv(field)
             attr = field.lower()
             if val is not None and hasattr(self, attr):
+                if field in self._INT_FIELDS:
+                    try:
+                        val = int(val)
+                    except ValueError:
+                        continue
                 setattr(self, attr, val)
 
     def save_to_env(self, updates: dict[str, str]) -> None:
