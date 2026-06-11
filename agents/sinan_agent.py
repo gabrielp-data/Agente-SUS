@@ -7,6 +7,7 @@ from langgraph.graph import END, StateGraph
 
 from agents.nodes import (
     analyze_intent,
+    conversational_answer_node,
     execute_sql_node,
     fix_sql_node,
     generate_answer_node,
@@ -75,6 +76,13 @@ def _route_after_validate(state: AgentState) -> str:
     return "generate_answer"
 
 
+def _route_after_intent(state: AgentState) -> str:
+    """Pergunta conversacional pula todo o pipeline de SQL."""
+    if state.get("intent") == "conversational":
+        return "conversational_answer"
+    return "query_rag"
+
+
 def _route_after_execute(state: AgentState) -> str:
     if state.get("execution_error"):
         if state.get("retry_count", 0) < 2:
@@ -88,17 +96,21 @@ def _route_after_execute(state: AgentState) -> str:
 def build_graph() -> StateGraph:
     g = StateGraph(AgentState)
 
-    g.add_node("analyze_intent",    analyze_intent)
-    g.add_node("query_rag",         query_rag)
-    g.add_node("generate_sql",      generate_sql)
-    g.add_node("validate_sql",      validate_sql_node)
-    g.add_node("execute_sql",       execute_sql_node)
-    g.add_node("fix_sql",           fix_sql_node)
-    g.add_node("generate_chart",    generate_chart_node)
-    g.add_node("generate_answer",   generate_answer_node)
+    g.add_node("analyze_intent",        analyze_intent)
+    g.add_node("conversational_answer", conversational_answer_node)
+    g.add_node("query_rag",             query_rag)
+    g.add_node("generate_sql",          generate_sql)
+    g.add_node("validate_sql",          validate_sql_node)
+    g.add_node("execute_sql",           execute_sql_node)
+    g.add_node("fix_sql",               fix_sql_node)
+    g.add_node("generate_chart",        generate_chart_node)
+    g.add_node("generate_answer",       generate_answer_node)
 
     g.set_entry_point("analyze_intent")
-    g.add_edge("analyze_intent", "query_rag")
+    g.add_conditional_edges("analyze_intent", _route_after_intent,
+                             {"conversational_answer": "conversational_answer",
+                              "query_rag": "query_rag"})
+    g.add_edge("conversational_answer", END)
     g.add_edge("query_rag",      "generate_sql")
     g.add_edge("generate_sql",   "validate_sql")
     g.add_conditional_edges("validate_sql", _route_after_validate,

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from typing import Any
 
 from config.settings import get_settings
@@ -40,12 +41,56 @@ def _format_history(history: list[dict]) -> list[dict]:
     return messages
 
 
+def _strip_accents(text: str) -> str:
+    return "".join(
+        c for c in unicodedata.normalize("NFKD", text) if not unicodedata.combining(c)
+    )
+
+
+# Saudações isoladas e padrões de perguntas sobre a própria conversa
+_GREETINGS = {
+    "oi", "ola", "ei", "eai", "e ai", "bom dia", "boa tarde", "boa noite",
+    "obrigado", "obrigada", "valeu", "tudo bem", "tudo bom",
+}
+_CONVERSATIONAL_PATTERNS = [
+    "ultima pergunta", "ultima questao", "que eu perguntei", "que perguntei",
+    "perguntei antes", "pergunta anterior", "perguntas anteriores",
+    "o que voce disse", "que voce falou", "voce falou", "voce ja disse",
+    "voce disse antes", "disse antes", "respondeu antes", "resposta anterior",
+    "ultima resposta", "minha primeira pergunta", "primeira pergunta",
+    "resuma", "resumo da conversa", "nossa conversa", "do que falamos",
+    "do que conversamos", "sobre o que conversamos", "historico",
+    "quem e voce", "o que voce faz", "o que voce pode fazer", "como voce funciona",
+    "para que voce serve", "o que voce e", "voce lembra",
+]
+
+
+def _is_conversational(question: str) -> bool:
+    """Detecta perguntas sobre a própria conversa / saudações (não são consultas a dados)."""
+    q = _strip_accents(question.lower()).strip()
+    q_clean = q.rstrip("!?.,; ")
+    if q_clean in _GREETINGS:
+        return True
+    return any(pat in q for pat in _CONVERSATIONAL_PATTERNS)
+
+
 # ── Node functions ────────────────────────────────────────────────────────────
 
 
 def analyze_intent(state: dict) -> dict:
     """Classify the question and identify candidate tables."""
     question = state["question"]
+
+    # Atalho: pergunta conversacional (sobre a conversa, saudação) — não vira SQL
+    if _is_conversational(question):
+        state["intent"] = "conversational"
+        state["disease"] = "geral"
+        state["selected_tables"] = []
+        state["needs_chart"] = False
+        state["chart_type"] = "none"
+        state["steps"].append("✅ Pergunta conversacional — respondendo pelo histórico")
+        return state
+
     rag_tables = _rag.get_relevant_tables(question)
 
     system = """Você é um especialista em dados de saúde pública do Brasil (SINAN/SUS).
@@ -310,6 +355,57 @@ def generate_chart_node(state: dict) -> dict:
         logger.warning("Erro ao gerar gráfico: %s", exc)
         state["chart"] = None
 
+    return state
+
+
+def conversational_answer_node(state: dict) -> dict:
+    """Responde perguntas sobre a própria conversa / saudações, sem gerar SQL."""
+    question = state["question"]
+    history = state.get("chat_history", [])
+
+    if history:
+        linhas = []
+        for i, turn in enumerate(history, 1):
+            linhas.append(f"{i}. Usuário perguntou: {turn.get('question', '')}")
+            resposta = (turn.get("answer", "") or "").strip()
+            linhas.append(f"   Você respondeu: {resposta[:400]}")
+        transcript = "\n".join(linhas)
+    else:
+        transcript = "(ainda não há perguntas anteriores nesta conversa)"
+
+    system = """Você é o assistente do SINAN Analytics, especializado em dados de
+saúde pública do Brasil (dengue, botulismo, doença de Chagas).
+O usuário fez uma pergunta sobre a PRÓPRIA CONVERSA ou uma saudação — isso NÃO é
+uma consulta a dados. Responda de forma breve, cordial e em português, usando o
+histórico abaixo quando for relevante. Nunca invente dados nem gere SQL.
+Se ele perguntar o que você faz, explique que pode responder perguntas sobre os
+dados do SINAN gerando SQL automaticamente."""
+
+    user_text = f"""Histórico da conversa até agora:
+{transcript}
+
+Pergunta atual do usuário: {question}
+
+Responda diretamente, com base no histórico."""
+
+    try:
+        answer, usage = _bedrock.invoke(
+            [{"role": "user", "content": [{"text": user_text}]}],
+            system, max_tokens=512,
+        )
+        state["total_input_tokens"] = state.get("total_input_tokens", 0) + usage.get("input_tokens", 0)
+        state["total_output_tokens"] = state.get("total_output_tokens", 0) + usage.get("output_tokens", 0)
+    except Exception as exc:
+        logger.error("conversational_answer falhou: %s", exc)
+        answer = "Desculpe, não consegui processar agora. Pode tentar de novo?"
+
+    state["answer"] = answer
+    state["sql"] = ""
+    state["results"] = None
+    state["chart"] = None
+    state["tables_used"] = []
+    state["filters_applied"] = []
+    state["steps"].append("✅ Resposta conversacional gerada")
     return state
 
 
