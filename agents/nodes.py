@@ -96,13 +96,23 @@ def analyze_intent(state: dict) -> dict:
     system = """Você é um especialista em dados de saúde pública do Brasil (SINAN/SUS).
 Analise a pergunta e retorne JSON:
 {
-  "intent": "aggregation|trend|comparison|detail|ranking|unknown",
+  "intent": "aggregation|trend|comparison|detail|ranking|conversational|unknown",
   "disease": "dengue|botulismo|chagas|geral",
   "tables": ["lista das tabelas mais relevantes"],
   "needs_chart": true,
   "chart_type": "bar|line|pie|heatmap|scatter|none",
   "complexity": "simple|medium|complex"
-}"""
+}
+
+REGRA IMPORTANTE sobre "conversational":
+Use intent="conversational" SOMENTE quando a pergunta for sobre a PRÓPRIA CONVERSA
+ou interação social, e NÃO sobre os dados. Exemplos (incluindo com erros de digitação):
+- "qual foi a última pergunta?" / "qual foi minha ultima pergnta?"
+- "o que você disse antes?" / "resuma nossa conversa"
+- "oi", "bom dia", "obrigado", "o que você faz?", "quem é você?"
+Nesses casos deixe "tables" como [] e "needs_chart" false.
+Para QUALQUER pergunta que envolva números, casos, anos, óbitos, municípios ou
+comparações entre dados, use os outros intents (NUNCA conversational)."""
 
     tables_hint = "\n".join(f"- {t}" for t in settings.sinan_tables)
     rag_hint = "\n".join(f"- {t}" for t in rag_tables) if rag_tables else "(nenhuma identificada)"
