@@ -10,7 +10,7 @@ from database.connection import execute_query
 from database.schema_loader import schema_to_prompt
 from rag.retriever import RAGRetriever
 from services.bedrock_service import BedrockService, CredentialsExpiredError
-from utils.geo import UF_SIGLA
+from utils.geo import UF_SIGLA, municipio_label, municipio_nome
 from utils.logger import get_logger
 from utils.sql_validator import sanitize_sql, validate_sql
 
@@ -304,7 +304,8 @@ def execute_sql_node(state: dict) -> dict:
         state["steps"].append(f"❌ Erro na execução: {error[:80]}")
     else:
         state["execution_error"] = ""
-        state["results"] = df
+        # Enriquece com nomes legíveis (município, UF) para a resposta e a tabela
+        state["results"] = enrich_geo(df)
         state["steps"].append(f"✅ Consulta executada — {len(df)} linhas retornadas")
     return state
 
@@ -354,17 +355,44 @@ Erro retornado:
     return state
 
 
-def _humanize_chart_df(df):
-    """Troca códigos de UF (ex: '35') pela sigla (ex: 'SP') em colunas de texto."""
+def _is_text(series) -> bool:
+    return series.dtype == object or str(series.dtype).startswith("string")
+
+
+def enrich_geo(df):
+    """Acrescenta rótulos legíveis às colunas geográficas do resultado.
+
+    - código de UF (2 díg.) → sigla (ex: '35' → 'SP')
+    - código de município (6 díg.) → coluna 'municipio' com 'Nome (UF)'
+    Mantém as colunas originais; só adiciona/traduz para leitura.
+    """
+    if df is None or getattr(df, "empty", True):
+        return df
     out = df.copy()
-    for col in out.columns:
-        # apenas colunas não-numéricas (códigos vêm como texto do LEFT(...))
-        if out[col].dtype == object or str(out[col].dtype).startswith("string"):
-            vals = out[col].astype(str).str.strip()
-            non_empty = vals[vals != ""]
-            if len(non_empty) and non_empty.isin(UF_SIGLA).mean() >= 0.6:
-                out[col] = vals.map(lambda v: UF_SIGLA.get(v, v))
+    for col in list(out.columns):
+        if not _is_text(out[col]):
+            continue
+        vals = out[col].astype(str).str.strip()
+        non_empty = vals[vals != ""]
+        if non_empty.empty:
+            continue
+        # Coluna de UF → sigla (no lugar)
+        if non_empty.isin(UF_SIGLA).mean() >= 0.6:
+            out[col] = vals.map(lambda v: UF_SIGLA.get(v, v))
+            continue
+        # Coluna de município → adiciona nome legível ao lado
+        is_cod6 = non_empty.str.fullmatch(r"\d{6}").mean() >= 0.6
+        if is_cod6 and "municipio" not in out.columns:
+            hit = non_empty.map(lambda v: municipio_nome(v) is not None).mean()
+            if hit >= 0.4:
+                names = vals.map(municipio_label)
+                out.insert(out.columns.get_loc(col) + 1, "municipio", names)
     return out
+
+
+def _humanize_chart_df(df):
+    """Rótulos legíveis nos gráficos (UF → sigla, município → nome)."""
+    return enrich_geo(df)
 
 
 def generate_chart_node(state: dict) -> dict:
