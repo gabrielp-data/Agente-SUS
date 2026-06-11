@@ -1,16 +1,11 @@
-"""🧠 Memória do Agente — histórico semântico e preferências."""
+"""Memória do Agente — histórico semântico e preferências."""
 from __future__ import annotations
 
 import streamlit as st
 
-from components.sidebar import render_sidebar
-from components.theme import apply_theme
 from components.ui import fmt_br, page_header, register_plotly_theme
 from rag.retriever import RAGRetriever
 
-st.set_page_config(page_title="Memória | SINAN Analytics", page_icon="◆", layout="wide")
-apply_theme()
-render_sidebar()
 TPL = register_plotly_theme()
 
 page_header(

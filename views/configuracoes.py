@@ -1,18 +1,19 @@
-"""⚙️ Configurações — gerenciamento de credenciais e conexões."""
+"""Configurações — gerenciamento de credenciais e conexões (página restrita)."""
 from __future__ import annotations
 
 import streamlit as st
 
-from components.sidebar import render_sidebar
-from components.theme import apply_theme
 from components.ui import page_header
 from config.settings import get_settings, _ENV_PATH
 from database.connection import test_connection
 from services.bedrock_service import BedrockService
+from utils.auth import require_admin
 
-st.set_page_config(page_title="Configurações | SINAN Analytics", page_icon="◆", layout="wide")
-apply_theme()
-render_sidebar()
+# Página restrita: em produção, exige ADMIN_PASSWORD (definida nos Secrets).
+# Sem a senha, qualquer visitante poderia trocar o endpoint do Bedrock e
+# capturar a chave de API — por isso o gate vem antes de qualquer conteúdo.
+if not require_admin():
+    st.stop()
 
 settings = get_settings()
 bedrock = BedrockService()

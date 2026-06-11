@@ -1,18 +1,14 @@
-"""📊 Monitoramento — dashboard operacional."""
+"""Monitoramento — dashboard operacional."""
 from __future__ import annotations
 
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from components.sidebar import render_sidebar
-from components.theme import apply_theme
 from components.ui import fmt_br, page_header, register_plotly_theme, render_table
 from services.monitoring_service import MonitoringService
+from utils.auth import admin_unlocked
 
-st.set_page_config(page_title="Monitoramento | SINAN Analytics", page_icon="◆", layout="wide")
-apply_theme()
-render_sidebar()
 TPL = register_plotly_theme()
 
 monitoring = MonitoringService()
@@ -21,6 +17,10 @@ page_header(
     "Monitoramento",
     "Auditoria operacional — consultas, tokens, custo estimado e latência",
 )
+st.caption(
+    "Os logs ficam em SQLite local — em hospedagem efêmera (Streamlit Cloud), "
+    "são zerados a cada redeploy."
+)
 
 # ── Refresh / Clear ───────────────────────────────────────────────────────────
 col_r, col_c, _ = st.columns([2, 2, 8])
@@ -28,10 +28,12 @@ with col_r:
     if st.button("Atualizar", use_container_width=True):
         st.rerun()
 with col_c:
-    if st.button("Limpar logs", use_container_width=True):
-        monitoring.clear_logs()
-        st.success("Logs limpos.")
-        st.rerun()
+    # Ação destrutiva — visível apenas para o admin (ou em dev local sem senha)
+    if admin_unlocked():
+        if st.button("Limpar logs", use_container_width=True):
+            monitoring.clear_logs()
+            st.success("Logs limpos.")
+            st.rerun()
 
 st.divider()
 

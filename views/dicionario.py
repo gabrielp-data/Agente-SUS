@@ -1,4 +1,4 @@
-"""📖 Dicionário da Base — metadados das tabelas SINAN."""
+"""Dicionário da Base — metadados das tabelas SINAN."""
 from __future__ import annotations
 
 import json
@@ -7,14 +7,8 @@ import os
 import pandas as pd
 import streamlit as st
 
-from components.sidebar import render_sidebar
-from components.theme import apply_theme
-from components.ui import fmt_br, page_header
+from components.ui import fmt_br, page_header, render_table
 from database.schema_loader import load_schema
-
-st.set_page_config(page_title="Dicionário | SINAN Analytics", page_icon="◆", layout="wide")
-apply_theme()
-render_sidebar()
 
 page_header(
     "Dicionário de Dados",
@@ -128,24 +122,17 @@ if search:
 
 st.caption(f"Exibindo **{len(filtered)}** colunas")
 
-# ── Table display ─────────────────────────────────────────────────────────────
+# ── Table display (HTML temático — segue dark/light) ─────────────────────────
+_SHOW = ["Coluna", "Tipo (DB)", "Nullable", "Descrição", "Exemplo"]
 if selected_table == "Todas":
     for table_name in sorted(df_dict["Tabela"].unique()):
         tdata = filtered[filtered["Tabela"] == table_name]
         if tdata.empty:
             continue
         with st.expander(f"{table_name}  ·  {len(tdata)} colunas", expanded=False):
-            st.dataframe(
-                tdata[["Coluna", "Tipo (DB)", "Nullable", "Descrição", "Exemplo"]].reset_index(drop=True),
-                use_container_width=True,
-                hide_index=True,
-            )
+            render_table(tdata[_SHOW].reset_index(drop=True))
 else:
-    st.dataframe(
-        filtered[["Coluna", "Tipo (DB)", "Nullable", "Descrição", "Exemplo"]].reset_index(drop=True),
-        use_container_width=True,
-        hide_index=True,
-    )
+    render_table(filtered[_SHOW].reset_index(drop=True))
 
 # ── Export ────────────────────────────────────────────────────────────────────
 st.divider()

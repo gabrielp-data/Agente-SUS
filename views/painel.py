@@ -1,35 +1,26 @@
-"""📈 Painel Epidemiológico — dashboard executivo SINAN."""
+"""Painel Epidemiológico — dashboard executivo SINAN."""
 from __future__ import annotations
 
-import plotly.express as px
-import plotly.graph_objects as go
-import streamlit as st
 import pandas as pd
+import plotly.express as px
+import streamlit as st
 
-from components.sidebar import render_sidebar
-from components.theme import apply_theme
-from components.ui import fmt_br, page_header, register_plotly_theme
+from components.ui import fmt_br, page_header, register_plotly_theme, render_table
 from database.connection import execute_query
+from utils.geo import SIGLA_UF, UF_SIGLA
 
-st.set_page_config(
-    page_title="Painel Epidemiológico | SINAN Analytics",
-    page_icon="◆",
-    layout="wide",
-)
-apply_theme()
-render_sidebar()
 TPL = register_plotly_theme()
 
-# ── Mapa UF ───────────────────────────────────────────────────────────────────
-UF_MAP = {
-    "11": "RO", "12": "AC", "13": "AM", "14": "RR", "15": "PA",
-    "16": "AP", "17": "TO", "21": "MA", "22": "PI", "23": "CE",
-    "24": "RN", "25": "PB", "26": "PE", "27": "AL", "28": "SE",
-    "29": "BA", "31": "MG", "32": "ES", "33": "RJ", "35": "SP",
-    "41": "PR", "42": "SC", "43": "RS", "50": "MS", "51": "MT",
-    "52": "GO", "53": "DF",
-}
-UF_REVERSE = {v: k for k, v in UF_MAP.items()}
+# Aliases locais (fonte única em utils/geo.py)
+UF_MAP = UF_SIGLA
+UF_REVERSE = SIGLA_UF
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_query(sql: str):
+    """Cache de 5 min nas consultas do painel — evita refazer ~12 queries
+    idênticas a cada interação de filtro/rerun."""
+    return execute_query(sql)
 
 MESES = {
     "01": "Jan", "02": "Fev", "03": "Mar", "04": "Abr",
@@ -49,7 +40,7 @@ with st.expander("Filtros", expanded=True):
         # Load available years dynamically
         @st.cache_data(ttl=300)
         def get_anos():
-            df, _ = execute_query(
+            df, _ = cached_query(
                 "SELECT DISTINCT ano FROM sus_sinan_dengue_anual ORDER BY ano DESC LIMIT 30"
             )
             return sorted(df["ano"].tolist(), reverse=True) if df is not None else []
@@ -89,7 +80,7 @@ def build_where(table_type: str = "anual") -> str:
 # ── KPI helpers ───────────────────────────────────────────────────────────────
 def get_total(table: str, col: str, where: str) -> int:
     sql = f"SELECT COALESCE(SUM({col}), 0) AS total FROM {table} {where}"
-    df, err = execute_query(sql)
+    df, err = cached_query(sql)
     if df is not None and not df.empty:
         return int(df["total"].iloc[0])
     return 0
@@ -130,7 +121,7 @@ with tab_d1:
         {build_where('anual')}
         GROUP BY ano ORDER BY ano
     """
-    df, _ = execute_query(sql)
+    df, _ = cached_query(sql)
     if df is not None and not df.empty:
         fig = px.bar(df, x="ano", y="total", title="Casos de Dengue por Ano",
                      labels={"ano": "Ano", "total": "Casos"},
@@ -138,7 +129,7 @@ with tab_d1:
                      color_continuous_scale="Reds")
         fig.update_layout(showlegend=False)
         st.plotly_chart(fig, use_container_width=True)
-        st.dataframe(df, hide_index=True, use_container_width=True)
+        render_table(df)
     else:
         st.info("Sem dados para os filtros selecionados.")
 
@@ -160,7 +151,7 @@ with tab_d2:
         GROUP BY ano, mes
         ORDER BY ano, mes
     """
-    df, _ = execute_query(sql)
+    df, _ = cached_query(sql)
     if df is not None and not df.empty:
         df["periodo"] = df["ano"] + "-" + df["mes"]
         fig = px.line(df, x="periodo", y="total", title="Série Temporal Mensal — Dengue",
@@ -180,7 +171,7 @@ with tab_d3:
         ORDER BY total DESC
         LIMIT 27
     """
-    df, _ = execute_query(sql)
+    df, _ = cached_query(sql)
     if df is not None and not df.empty:
         df["uf"] = df["cod_uf"].map(UF_MAP).fillna(df["cod_uf"])
         fig = px.bar(df.sort_values("total", ascending=True),
@@ -203,7 +194,7 @@ with tab_d4:
                 SUM(sexo_feminino)  AS feminino
             FROM sus_sinan_dengue_anual {build_where('anual')}
         """
-        df_s, _ = execute_query(sql_sexo)
+        df_s, _ = cached_query(sql_sexo)
         if df_s is not None and not df_s.empty:
             row = df_s.iloc[0]
             df_pie = pd.DataFrame({
@@ -224,7 +215,7 @@ with tab_d4:
                 SUM(raca_indigena) AS Indigena
             FROM sus_sinan_dengue_anual {build_where('anual')}
         """
-        df_r, _ = execute_query(sql_raca)
+        df_r, _ = cached_query(sql_raca)
         if df_r is not None and not df_r.empty:
             row = df_r.iloc[0]
             df_raca = pd.DataFrame({
@@ -251,7 +242,7 @@ with tab_d4:
             SUM(faixa_etaria_70_79) AS "70-79"
         FROM sus_sinan_dengue_anual {build_where('anual')}
     """
-    df_fe, _ = execute_query(sql_fe)
+    df_fe, _ = cached_query(sql_fe)
     if df_fe is not None and not df_fe.empty:
         row = df_fe.iloc[0]
         df_faixa = pd.DataFrame({
@@ -276,7 +267,7 @@ with tab_b1:
         {build_where('mensal')}
         GROUP BY ano, mes ORDER BY ano, mes
     """
-    df, _ = execute_query(sql)
+    df, _ = cached_query(sql)
     if df is not None and not df.empty:
         df["periodo"] = df["ano"] + "-" + df["mes"]
         fig = px.line(df, x="periodo", y="total",
@@ -295,7 +286,7 @@ with tab_b2:
         {build_where('mensal')}
         GROUP BY cod_uf ORDER BY total DESC LIMIT 27
     """
-    df, _ = execute_query(sql)
+    df, _ = cached_query(sql)
     if df is not None and not df.empty:
         df["uf"] = df["cod_uf"].map(UF_MAP).fillna(df["cod_uf"])
         fig = px.bar(df, x="uf", y="total", title="Botulismo por UF",
@@ -319,7 +310,7 @@ with tab_c1:
         {build_where('mensal')}
         GROUP BY ano, mes ORDER BY ano, mes
     """
-    df, _ = execute_query(sql)
+    df, _ = cached_query(sql)
     if df is not None and not df.empty:
         df["periodo"] = df["ano"] + "-" + df["mes"]
         fig = px.line(df, x="periodo", y="total",
@@ -338,7 +329,7 @@ with tab_c2:
         {build_where('mensal')}
         GROUP BY cod_uf ORDER BY total DESC LIMIT 27
     """
-    df, _ = execute_query(sql)
+    df, _ = cached_query(sql)
     if df is not None and not df.empty:
         df["uf"] = df["cod_uf"].map(UF_MAP).fillna(df["cod_uf"])
         fig = px.bar(df, x="uf", y="total", title="Chagas por UF",
