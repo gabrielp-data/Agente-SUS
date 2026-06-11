@@ -4,7 +4,6 @@ from __future__ import annotations
 import json
 import re
 import unicodedata
-from typing import Any
 
 from config.settings import get_settings
 from database.connection import execute_query
@@ -275,7 +274,7 @@ Retorne SOMENTE um JSON válido no formato:
     state["columns_used"] = parsed.get("columns_used", [])
     state["filters_applied"] = parsed.get("filters_applied", [])
     state["sql_explanation"] = parsed.get("explanation", "")
-    state["steps"].append(f"✅ SQL gerado")
+    state["steps"].append("✅ SQL gerado")
     state["total_input_tokens"] = state.get("total_input_tokens", 0) + usage.get("input_tokens", 0)
     state["total_output_tokens"] = state.get("total_output_tokens", 0) + usage.get("output_tokens", 0)
     return state
@@ -379,12 +378,10 @@ def generate_chart_node(state: dict) -> dict:
 
     try:
         import plotly.express as px
-        import plotly.graph_objects as go
 
         # Rótulos legíveis (código de UF → sigla)
         df = _humanize_chart_df(df)
         fig = None
-        cols = list(df.columns)
 
         # Identify numeric and categorical columns
         num_cols = df.select_dtypes(include="number").columns.tolist()

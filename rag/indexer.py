@@ -10,11 +10,14 @@ import os
 import re
 import unicodedata
 
+from pathlib import Path
+
 from utils.logger import get_logger
 
 logger = get_logger("rag.indexer")
 
-DICT_PATH = "data/dicionario_sinan.json"
+# Caminho absoluto — funciona independentemente do diretório de execução
+DICT_PATH = str(Path(__file__).resolve().parent.parent / "data" / "dicionario_sinan.json")
 
 
 def normalize(text: str) -> str:

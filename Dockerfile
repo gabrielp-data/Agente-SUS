@@ -1,10 +1,10 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
-# System deps
+# System deps (libpq para psycopg2, curl para o healthcheck)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev gcc && \
+    libpq-dev gcc curl && \
     rm -rf /var/lib/apt/lists/*
 
 # Python deps
@@ -14,8 +14,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # App
 COPY . .
 
-# Create runtime dirs
-RUN mkdir -p logs data/chroma_db
+# Diretório de runtime para logs
+RUN mkdir -p logs
 
 EXPOSE 8501
 
