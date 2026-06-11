@@ -35,6 +35,17 @@ DARK_CSS = """
   .stMarkdown p, .stMarkdown li, .stMarkdown span { color: #e8eaf0 !important; }
   .stCaption, .stCaption p { color: #9ba4b5 !important; }
   [data-testid="stSidebarNav"] a span { color: #e8eaf0 !important; }
+  /* Marca no topo da barra lateral (acima do menu de navegação) */
+  [data-testid="stSidebarNav"]::before {
+    content: "SINAN Analytics";
+    display: block;
+    font-size: 1.1rem; font-weight: 700; letter-spacing: -.4px;
+    color: #f1f3f9 !important;
+    padding: .15rem 0 .8rem .9rem;
+    margin-bottom: .35rem;
+    border-bottom: 2px solid;
+    border-image: linear-gradient(90deg,#4f8ef7,#22c55e) 1;
+  }
   /* Barra superior e rodapé do chat acompanham o fundo escuro */
   header[data-testid="stHeader"] { background: rgba(15,17,23,.85) !important; backdrop-filter: blur(6px); }
   [data-testid="stToolbar"] { color: #e8eaf0 !important; }
@@ -79,6 +90,17 @@ LIGHT_CSS = """
   .stCaption, .stCaption p { color: #64748b !important; }
   [data-testid="stSidebarNav"] a span { color: #1e293b !important; }
   code { background: #f1f5f9 !important; color: #0f172a !important; }
+  /* Marca no topo da barra lateral (acima do menu de navegação) */
+  [data-testid="stSidebarNav"]::before {
+    content: "SINAN Analytics";
+    display: block;
+    font-size: 1.1rem; font-weight: 700; letter-spacing: -.4px;
+    color: #0f172a !important;
+    padding: .15rem 0 .8rem .9rem;
+    margin-bottom: .35rem;
+    border-bottom: 2px solid;
+    border-image: linear-gradient(90deg,#4f8ef7,#22c55e) 1;
+  }
   /* Barra superior e rodapé do chat acompanham o fundo claro */
   header[data-testid="stHeader"] { background: rgba(248,250,252,.85) !important; backdrop-filter: blur(6px); }
   [data-testid="stToolbar"] { color: #1e293b !important; }

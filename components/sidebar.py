@@ -9,19 +9,6 @@ from components.theme import render_theme_toggle
 def render_sidebar() -> None:
     """Render the common sidebar elements (logo, nav info, theme toggle)."""
     with st.sidebar:
-        st.markdown(
-            """
-            <div style='text-align:center; padding: 1rem 0 0.5rem;'>
-              <span style='display:inline-block;width:34px;height:34px;border-radius:9px;
-                    background:linear-gradient(135deg,#4f8ef7,#22c55e);
-                    margin-bottom:.45rem;'></span><br>
-              <span style='font-size:1.15rem; font-weight:700; letter-spacing:-.3px'>SINAN Analytics</span><br>
-              <span style='font-size:.72rem; opacity:.6'>Análise Epidemiológica · SUS</span>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        st.divider()
         render_theme_toggle()
         st.divider()
 
