@@ -35,6 +35,14 @@ DARK_CSS = """
   .stSelectbox label, .stMultiSelect label, .stTextInput label, .stSlider label { color: #e8eaf0 !important; }
   [data-testid="stMetricValue"] { color: #f1f3f9 !important; }
   [data-testid="stMetricLabel"] { color: #9ba4b5 !important; }
+  /* KPIs como cards */
+  [data-testid="stMetric"] {
+    background: #1e2235 !important;
+    border: 1px solid #2d3250 !important;
+    border-left: 3px solid #4f8ef7 !important;
+    border-radius: 12px !important;
+    padding: .9rem 1.1rem !important;
+  }
   .stDataFrame { border-radius: 8px !important; }
   .stMarkdown p, .stMarkdown li, .stMarkdown span { color: #e8eaf0 !important; }
   .stCaption, .stCaption p { color: #9ba4b5 !important; }
@@ -94,6 +102,15 @@ LIGHT_CSS = """
   }
   .metric-card h4 { color: #0f172a !important; }
   .metric-card p { color: #475569 !important; }
+  /* KPIs como cards */
+  [data-testid="stMetric"] {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-left: 3px solid #2563eb !important;
+    border-radius: 12px !important;
+    padding: .9rem 1.1rem !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06) !important;
+  }
   /* #2563eb sobre branco = contraste 4.7:1 (WCAG AA) */
   .stButton > button,
   [data-testid="stFormSubmitButton"] button,
