@@ -30,6 +30,18 @@ DARK_CSS = """
   [data-testid="stDownloadButton"] button { background: #2563eb !important; color: #fff !important; border-radius: 8px !important; border: none !important; font-weight: 600 !important; }
   .stButton > button:hover,
   [data-testid="stFormSubmitButton"] button:hover { background: #1d4ed8 !important; }
+  /* Toggle de tema — controle utilitário, estilo discreto (não primário) */
+  section[data-testid="stSidebar"] .st-key-theme_toggle button {
+    background: transparent !important;
+    color: #9ba4b5 !important;
+    border: 1px solid #2d3250 !important;
+    font-weight: 500 !important;
+  }
+  section[data-testid="stSidebar"] .st-key-theme_toggle button:hover {
+    background: rgba(255,255,255,.05) !important;
+    color: #e8eaf0 !important;
+    border-color: #3a4060 !important;
+  }
   .stExpander { background: #1e2235 !important; border: 1px solid #2d3250 !important; border-radius: 8px !important; }
   .stExpander summary, .stExpander p { color: #e8eaf0 !important; }
   .stSelectbox label, .stMultiSelect label, .stTextInput label, .stSlider label { color: #e8eaf0 !important; }
@@ -117,6 +129,18 @@ LIGHT_CSS = """
   [data-testid="stDownloadButton"] button { background: #2563eb !important; color: #fff !important; border-radius: 8px !important; border: none !important; font-weight: 600 !important; }
   .stButton > button:hover,
   [data-testid="stFormSubmitButton"] button:hover { background: #1d4ed8 !important; }
+  /* Toggle de tema — controle utilitário, estilo discreto (não primário) */
+  section[data-testid="stSidebar"] .st-key-theme_toggle button {
+    background: transparent !important;
+    color: #64748b !important;
+    border: 1px solid #d8dfea !important;
+    font-weight: 500 !important;
+  }
+  section[data-testid="stSidebar"] .st-key-theme_toggle button:hover {
+    background: rgba(0,0,0,.03) !important;
+    color: #1e293b !important;
+    border-color: #cbd5e1 !important;
+  }
   .stExpander { background: #ffffff !important; border: 1px solid #e2e8f0 !important; border-radius: 8px !important; }
   .stExpander summary, .stExpander p { color: #1e293b !important; }
   .stSelectbox label, .stMultiSelect label, .stTextInput label, .stSlider label { color: #1e293b !important; }
