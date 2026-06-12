@@ -55,10 +55,14 @@ if df.empty:
     st.info("Nenhuma consulta registrada ainda. Faça perguntas na página Chat Analítico.")
 else:
     # Chart — queries over time
+    # format="mixed" tolera timestamps com e sem fuso (logs antigos + novos)
     if "timestamp" in df.columns:
-        df["timestamp"] = pd.to_datetime(df["timestamp"])
+        df["timestamp"] = pd.to_datetime(
+            df["timestamp"], format="mixed", utc=True, errors="coerce"
+        )
+        df_valid = df.dropna(subset=["timestamp"])
         df_time = (
-            df.set_index("timestamp")
+            df_valid.set_index("timestamp")
             .resample("1h")
             .size()
             .reset_index(name="count")
