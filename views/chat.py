@@ -54,6 +54,24 @@ st.divider()
 
 
 # ── Render helpers ─────────────────────────────────────────────────────────────
+def _render_answer(entry: dict) -> None:
+    """Renderiza a resposta: resumo + cards de destaque + análise.
+
+    Cai para texto simples quando não há destaques (conversa, erro, ranking).
+    """
+    highlights = entry.get("highlights") or []
+    if highlights:
+        if entry.get("summary"):
+            st.markdown(entry["summary"])
+        cols = st.columns(len(highlights))
+        for col, h in zip(cols, highlights):
+            col.metric(h.get("rotulo", ""), h.get("valor", ""))
+        if entry.get("analysis"):
+            st.markdown(entry["analysis"])
+    else:
+        st.markdown(entry.get("answer", "Sem resposta."))
+
+
 def _render_details(entry: dict) -> None:
     """Expanders de SQL, auditoria, gráfico e dados de uma resposta."""
     if entry.get("sql"):
@@ -93,7 +111,7 @@ for entry in st.session_state.chat_history:
     with st.chat_message("user"):
         st.markdown(entry["question"])
     with st.chat_message("assistant", avatar=ASSISTANT_AVATAR):
-        st.markdown(entry["answer"])
+        _render_answer(entry)
         _render_details(entry)
 
 # ── Input handling ────────────────────────────────────────────────────────────
@@ -124,14 +142,13 @@ if question:
         result = None
         error_msg = ""
 
-        # Pipeline (intenção → RAG → SQL → execução → gráfico), sem a resposta
+        # Pipeline completo (intenção → RAG → SQL → execução → gráfico → resposta)
         with st.status("Processando consulta...", expanded=False) as status:
             try:
                 result = st.session_state.agent.run(
                     question=question,
                     chat_history=st.session_state.chat_history,
                     db_schema=st.session_state.db_schema,
-                    skip_answer=True,
                 )
                 for step in result.get("steps", []):
                     st.write(step)
@@ -147,22 +164,14 @@ if question:
                 status.update(label="Falha na consulta", state="error")
                 error_msg = str(exc)
 
-        # Resposta final em streaming (perguntas conversacionais já vêm prontas)
-        if result is not None and not result.get("answer"):
-            try:
-                st.write_stream(st.session_state.agent.stream_answer(result))
-            except CredentialsExpiredError as exc:
-                error_msg = str(exc)
-                result = None
-                st.error(error_msg)
-            except Exception as exc:
-                result["answer"] = f"❌ Falha ao gerar a resposta: {exc}"
-
         if result:
             latency_ms = int((time.monotonic() - start_time) * 1000)
             entry = {
                 "question": question,
                 "answer": result.get("answer", "Sem resposta."),
+                "summary": result.get("summary", ""),
+                "highlights": result.get("highlights", []),
+                "analysis": result.get("analysis", ""),
                 "sql": result.get("sql", ""),
                 "sql_explanation": result.get("sql_explanation", ""),
                 "tables_used": result.get("tables_used", []),

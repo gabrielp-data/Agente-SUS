@@ -4,7 +4,6 @@ from __future__ import annotations
 import os
 import threading
 import time
-from typing import Generator
 
 from config.settings import get_settings
 from utils.logger import get_logger
@@ -108,45 +107,6 @@ class BedrockService:
             model, usage["input_tokens"], usage["output_tokens"], usage["latency_ms"],
         )
         return text, usage
-
-    def invoke_stream(
-        self,
-        messages: list[dict],
-        system: str,
-        model_id: str | None = None,
-        max_tokens: int = 4096,
-        temperature: float = 0.0,
-        usage_out: dict | None = None,
-    ) -> Generator[str, None, None]:
-        """
-        Streaming via Converse Stream API — yields pedaços de texto.
-
-        Se `usage_out` for passado, recebe input_tokens/output_tokens ao final.
-        """
-        import botocore.exceptions
-
-        model = model_id or self.settings.bedrock_model_id
-        client = _get_client(self.settings)
-
-        try:
-            resp = client.converse_stream(
-                modelId=model,
-                system=[{"text": system}],
-                messages=messages,
-                inferenceConfig={"maxTokens": max_tokens, "temperature": temperature},
-            )
-            for event in resp["stream"]:
-                if "contentBlockDelta" in event:
-                    delta = event["contentBlockDelta"]["delta"].get("text", "")
-                    if delta:
-                        yield delta
-                elif "metadata" in event and usage_out is not None:
-                    u = event["metadata"].get("usage", {})
-                    usage_out["input_tokens"] = u.get("inputTokens", 0)
-                    usage_out["output_tokens"] = u.get("outputTokens", 0)
-        except botocore.exceptions.ClientError as exc:
-            _raise_if_credentials(exc)
-            raise
 
     def test_connection(self) -> tuple[bool, str]:
         """Testa conectividade com diagnóstico detalhado."""

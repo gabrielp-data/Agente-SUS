@@ -557,12 +557,25 @@ def build_final_answer_inputs(state: dict) -> tuple[str | None, str | None, list
     preview = df.head(15).to_string() if n_rows > 15 else df.to_string()
     extra = f"\n*(e mais {n_rows - 15} linhas)*" if n_rows > 15 else ""
 
-    system = """Você é um analista especializado em dados de saúde pública brasileira (SINAN/SUS).
-Responda em português, de forma clara, objetiva e profissional.
-Use markdown: **negrito** para números relevantes, listas quando necessário.
-Destaque padrões, tendências ou anomalias nos dados.
-Mantenha um tom sóbrio e técnico: NÃO use emojis (no máximo um, e só se for
-realmente útil). Evite títulos decorativos e ícones — priorize o conteúdo."""
+    system = """Você é um analista de dados de saúde pública brasileira (SINAN/SUS).
+Responda em português, com tom sóbrio e técnico. NÃO use emojis.
+
+Retorne SOMENTE um JSON válido neste formato:
+{
+  "resumo": "uma única frase direta respondendo a pergunta (com o número principal em **negrito**)",
+  "destaques": [
+    {"valor": "82.962", "rotulo": "Casos registrados"},
+    {"valor": "2.676", "rotulo": "por 100 mil hab."},
+    {"valor": "Alta", "rotulo": "Incidência"}
+  ],
+  "analise": "markdown CONCISO: 2 a 4 itens curtos de contexto/atenção. Sem títulos decorativos."
+}
+
+Regras dos destaques:
+- 0 a 3 itens, só números ou classificações REALMENTE relevantes para a pergunta.
+- "valor" curto (número em formato BR, percentual, ou 1-2 palavras). "rotulo" curto.
+- Se a pergunta for uma lista/ranking sem um número único, use [] e deixe tudo na análise.
+- Não invente números que não estejam nos dados (estimativas devem ir na análise, não em destaque)."""
 
     user_text = f"""Pergunta: {question}
 
@@ -574,32 +587,62 @@ SQL executado:
 Resultado ({n_rows} linhas):
 {preview}{extra}
 
-Responda à pergunta com base nos dados acima. Destaque os principais números e insights."""
+Responda com base nos dados acima."""
 
     history = _format_history(state.get("chat_history", []))
     messages = history + [{"role": "user", "content": [{"text": user_text}]}]
     return None, system, messages
 
 
+def _compose_answer(summary: str, highlights: list, analysis: str) -> str:
+    """Junta as partes num markdown único (para log e fallback de exibição)."""
+    parts = []
+    if summary:
+        parts.append(summary)
+    for h in highlights:
+        parts.append(f"- **{h.get('valor', '')}** — {h.get('rotulo', '')}")
+    if analysis:
+        parts.append(analysis)
+    return "\n\n".join(parts)
+
+
 def generate_answer_node(state: dict) -> dict:
-    """Generate a natural language answer based on the query results."""
+    """Generate a structured answer (resumo + destaques + análise)."""
     direct, system, messages = build_final_answer_inputs(state)
     if direct is not None:
         state["answer"] = direct
         return state
 
     try:
-        answer, usage = _bedrock.invoke(messages, system, max_tokens=2048)
+        raw, usage = _bedrock.invoke(messages, system, max_tokens=2048)
         state["total_input_tokens"] = state.get("total_input_tokens", 0) + usage.get("input_tokens", 0)
         state["total_output_tokens"] = state.get("total_output_tokens", 0) + usage.get("output_tokens", 0)
+        try:
+            parsed = _extract_json(raw)
+            summary = parsed.get("resumo", "")
+            highlights = parsed.get("destaques", []) or []
+            analysis = parsed.get("analise", "")
+            # valida formato dos destaques
+            highlights = [
+                {"valor": str(h.get("valor", "")), "rotulo": str(h.get("rotulo", ""))}
+                for h in highlights if isinstance(h, dict) and h.get("valor")
+            ][:3]
+        except Exception:
+            # modelo não devolveu JSON — usa o texto cru como resposta simples
+            summary, highlights, analysis = raw, [], ""
+
+        state["summary"] = summary
+        state["highlights"] = highlights
+        state["analysis"] = analysis
+        state["answer"] = _compose_answer(summary, highlights, analysis)
+
     except CredentialsExpiredError:
         raise
     except Exception as exc:
         logger.error("generate_answer falhou: %s", exc)
         n_rows = len(state.get("results", []) or [])
-        answer = (f"Consulta executada com sucesso ({n_rows} linhas retornadas), "
-                  f"mas não foi possível gerar a interpretação: {exc}")
+        state["answer"] = (f"Consulta executada com sucesso ({n_rows} linhas), "
+                           f"mas não foi possível gerar a interpretação: {exc}")
 
-    state["answer"] = answer
     state["steps"].append("✅ Resposta gerada")
     return state
