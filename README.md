@@ -15,7 +15,7 @@
 
 ## Demonstração
 
-> _Substitua por um GIF/print real:_ `docs/demo.gif`
+![Painel Epidemiológico do SINAN Analytics: indicadores gerais e casos de dengue por UF](docs/painel-epidemiologico.jpg)
 
 | Chat Analítico | Painel Epidemiológico |
 |---|---|
